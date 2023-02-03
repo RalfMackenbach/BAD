@@ -1,2 +1,2 @@
 # BAD
- A repo documenting numerical means of calculating the bounce-averaged drifts.
+ A repo documenting numerical means of calculating the Bounce Averaged Drifts.
