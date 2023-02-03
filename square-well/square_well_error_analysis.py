@@ -11,7 +11,7 @@ def modb(l,al=1.0):
     return 1 + al * l**2
 
 # radial derivative of modB of square well example
-def dbdpsi(l,apsi=1.0,b=1.0):
+def dbdpsi(l,apsi=1.5,b=1.0):
     return apsi * ( l**2 - b )
 
 # analytical bounce-time
@@ -19,11 +19,11 @@ def bounce_time(lam_val,al=1.0):
     return np.pi/np.sqrt(lam_val*al)
 
 # analytical Delta alpha
-def delta_alpha(lam_val,al=1.0,apsi=1.0,b=1.0):
+def delta_alpha(lam_val,al=1.0,apsi=1.5,b=1.0):
     return np.pi * apsi * (lam_val + 2 * lam_val * b * al - 1) / ( 2 * al**1.5 * lam_val**0.5 )
 
 # analytical bounce averaged drift
-def drift(lam_val,al=1.0,apsi=1.0,b=1.0):
+def drift(lam_val,al=1.0,apsi=1.5,b=1.0):
     return apsi * ( 2 * b * al * lam_val + lam_val - 1.0 ) / ( 2 * al )
 
 

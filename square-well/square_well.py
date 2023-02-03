@@ -1,5 +1,3 @@
-import sys
-sys.path.append('/Users/ralfmackenbach/Documents/GitHub/Bounce-averaged-drift/BAD/src/')  
 import gtrapz
 import numpy as np
 import matplotlib.pyplot as plt
