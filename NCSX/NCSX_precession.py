@@ -38,7 +38,7 @@ gtrapz_arr_psi      = []
 
 # loop over all lambda values
 for idx, lam_val in enumerate(lam_arr):
-    num_arr_alpha           = flux_sign * ( (lam_val * grad_alpha - 2 * (1./modb - lam_val) * curv_alpha) * dydalpha * a_minor )
+    num_arr_alpha           = ( (lam_val * grad_alpha - 2 * (1./modb - lam_val) * curv_alpha) * dydalpha * a_minor )
     num_alpha, den_alpha    = gtrapz.w_bounce(dldtheta,modb,num_arr_alpha,theta,lam_val)
     gtrapz_arr_alpha.append(num_alpha/den_alpha)
     num_arr_psi             = (lam_val * grad_psi - 2 * (1./modb - lam_val) * curv_psi) * drdpsi * a_minor
@@ -83,7 +83,6 @@ ax[0].set_ylabel(r'$\langle \hat{\mathbf{v}}_D \cdot \nabla y \rangle$')
 ax[1].set_xlabel(r'$k^2$')
 ax[1].set_xlim(0,1)
 ax[1].set_ylabel(r'$\langle \hat{\mathbf{v}}_D \cdot \nabla r \rangle$')
-ax[1].legend()
 
-plt.savefig('precession_NCSX.png',dpi=1000)
+plt.savefig('precession_NCSX.eps',dpi=1000)
 plt.show()
