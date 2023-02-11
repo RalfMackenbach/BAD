@@ -31,7 +31,7 @@ def drift(lam_val,al=1.0,apsi=1.5,b=1.0):
 
 
 # loop over res as well
-res = np.rint(np.logspace(1,5,5,endpoint=True)).astype(int)
+res = np.rint(np.logspace(1,5,10,endpoint=True)).astype(int)
 print(res)
 ave_err = np.zeros(len(res))
 
@@ -45,7 +45,7 @@ for res_idx, res_val in enumerate(res):
     dbdpsi_arr  = dbdpsi(l_arr)
     # make array with lambdas and bounce-averaged quantities
     # we exclude the endpoint and starting point
-    lam_arr     = np.linspace(1/np.max(modb_arr),1/np.min(modb_arr),res_val,endpoint=False)
+    lam_arr     = np.linspace(1/np.max(modb_arr),1/np.min(modb_arr),1000,endpoint=False)
     lam_arr     = np.delete(lam_arr, 0)
     gtrapz_num  = np.empty_like(lam_arr)
     gtrapz_den  = np.empty_like(lam_arr)
@@ -59,7 +59,7 @@ for res_idx, res_val in enumerate(res):
         gtrapz_den[idx] = den
         gtrapz_ave[idx] = num/den
     
-    abs_diff = np.abs(gtrapz_ave-true_res)
+    abs_diff = np.abs((gtrapz_ave-true_res)/true_res)
     ave_diff = np.average(abs_diff)
     print(ave_diff)
     ave_err[res_idx] = ave_diff
@@ -77,10 +77,10 @@ mpl.rc('font', **font)
 
 fig, ax1 = plt.subplots(1, 1, tight_layout=True, figsize=(3.5, 2.5))
 
-diff_gtrapz = np.abs(gtrapz_ave-true_res)
+
 ax1.loglog(res,ave_err,label='g-trapz')
 ax1.set_aspect('auto')
-ax1.loglog(res,0.3*ave_err[0]*(res[0]/res)**1.5,label='3/2',color='black',linestyle='dashed')
+ax1.loglog(res,0.1*ave_err[-1]*(res[-1]/res)**1.5,label='3/2',color='black',linestyle='dashed')
 ax1.legend()
 ax1.set_ylabel(r'Error')
 ax1.set_xlabel(r'$\hat{L}/\Delta \hat{\ell}$')
