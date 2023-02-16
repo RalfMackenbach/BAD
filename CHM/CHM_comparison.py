@@ -47,9 +47,10 @@ gtrapz_ave  = []
 # now calculate for various lambda
 for idx, lam_val in enumerate(lam_arr):
     f = 1.0 - lam_val*modb
-    tau_b   = bounce_int.bounce_integral_wrapper(f,sqrtg,theta,is_func=False)
+    dldtheta = sqrtg/modb
+    tau_b   = bounce_int.bounce_integral_wrapper(f,dldtheta,theta,is_func=False)
     alpha_arr = ( lam_val- 2 * (1/modb - lam_val) ) * L2 - my_dpdx * (1 - lam_val * modb)/modb**2
-    d_alpha = bounce_int.bounce_integral_wrapper(f,alpha_arr * sqrtg,theta,is_func=False)
+    d_alpha = bounce_int.bounce_integral_wrapper(f,alpha_arr * dldtheta,theta,is_func=False)
     gtrapz_den.append(np.asarray(tau_b))
     gtrapz_den.append(np.asarray(d_alpha))
     gtrapz_ave.append(list(np.asarray(d_alpha)/np.asarray(tau_b)))
@@ -89,4 +90,6 @@ ax[1].set_xlim(0,1)
 ax[1].set_ylabel(r'$\langle \mathbf{v}_D \cdot \nabla \alpha \rangle$')
 ax[1].legend()
 plt.savefig('CHM_direct_averaging.eps')
+plt.show()
+plt.semilogy(k2,np.abs(CHM_res-gtrapz_ave[:,1]))
 plt.show()
