@@ -1,7 +1,5 @@
-# This file contains all subroutines used in the calculation of the Available
-# Energy of trapped particles. Based on fortran implementation
+# This file contains all subroutines used in the calculation bounce-averaged drifts
 import  numpy           as      np
-from    numba           import  jit, njit
 import  scipy
 
 
@@ -194,7 +192,7 @@ def bounce_integral(f,h,x,index,root,is_func=False):
     return bounce_val
 
 
-def bounce_integral_wrapper(f,h,x,is_func=False):
+def bounce_integral_wrapper(f,h,x,is_func=False,return_roots=False):
     r"""
     ``bounce_integral_wrapper`` does the bounce integral
     but wraps the root finding routine into one function.
@@ -226,4 +224,7 @@ def bounce_integral_wrapper(f,h,x,is_func=False):
             index = np.roll(index,1)
             root = np.roll(root,1)
         bounce_val = bounce_integral(f,h,x,index,root,is_func=True)
-    return bounce_val
+    if return_roots==False:
+        return bounce_val
+    if return_roots==True:
+        return bounce_val, root

@@ -4,6 +4,7 @@ import numpy as np
 
 # Open the file for reading
 def read_columns(file_name):
+    "Entirely written by ChatGPT."
     # Open the file for reading
     with open(file_name) as f:
         # Find the index of the last line that contains the "/" character

@@ -55,7 +55,7 @@ K2_interp       = interp.interp1d(theta, L2 - my_dpdx/(2*modb), kind=kind)
 # now calculate for various lambda
 for idx, lam_val in enumerate(lam_arr):
     f = lambda x: 1.0 - lam_val*modb_interp(x)
-    delta_alpha = lambda x: (lam_val * L2_interp(x) + 2 * (1/modb_interp(x) - lam_val) * K2_interp(x)) * dldtheta_interp(x)
+    delta_alpha = lambda x: -1.0 * (lam_val * L2_interp(x) + 2 * (1/modb_interp(x) - lam_val) * K2_interp(x)) * dldtheta_interp(x)
     tau_b   = bounce_int.bounce_integral_wrapper(f,dldtheta_interp,theta,is_func=True)
     d_alpha = bounce_int.bounce_integral_wrapper(f,delta_alpha,theta,is_func=True)
     gtrapz_den.append(np.asarray(tau_b))
@@ -68,7 +68,7 @@ gtrapz_ave=np.asarray(gtrapz_ave)
 k2 = (modb.max() - lam_arr * modb.max() * modb.min())/(modb.max()-modb.min())
 
 # calculate analytical result
-conversion_fac = -2*np.sqrt(data.s0)/0.01
+conversion_fac = 2*np.sqrt(data.s0)/0.01
 CHM_res = conversion_fac*CHM_analytical(k2,7,5,data.q0)
 
 plt.close('all')
@@ -83,8 +83,8 @@ fig, ax = plt.subplots(3, 1, tight_layout=True, figsize=(3.5, 2.5*2.5))
 ax[0].plot(theta/np.pi,modb,color='black')
 twinax0 = ax[0].twinx()
 ax[0].set_xlabel(r'$\theta/\pi$')
-ax[0].set_ylabel(r'$B  \quad \mathrm{[a.u.]}$')
-twinax0.set_ylabel(r'$\frac{\mathbf{B} \times \nabla B \cdot \nabla \alpha}{B^2} \quad \mathrm{[a.u.]}$',color='tab:blue')
+ax[0].set_ylabel(r'$B  \quad [B_0]$')
+twinax0.set_ylabel(r'$\frac{\mathbf{B} \times \nabla B \cdot \nabla \alpha}{B^2} \quad [a^{-2}]$',color='tab:blue')
 twinax0.plot(theta/np.pi,L2,color='tab:blue')
 twinax0.plot(theta/np.pi,0.0*L2,color='red',linestyle='dashed')
 twinax0.set_ylim(-L2.max(), 1.1*L2.max())
@@ -101,8 +101,8 @@ ax[1].legend()
 df = pd.read_table("CHMs7a5_mulitple_methods.dat", sep="\s+")
 joey_dat = df.to_numpy()
 k2      = joey_dat[:,0]
-djdpsi  = -2*joey_dat[:,2]
-CHM     = -2*joey_dat[:,4]
+djdpsi  = 2*joey_dat[:,2]
+CHM     = 2*joey_dat[:,4]
 
 
 ax[2].plot(k2,djdpsi,label='CW')
@@ -111,7 +111,7 @@ ax[2].plot(k2,CHM,linestyle='dotted',color='black',label='CHM')
 ax[2].set_xlabel(r'$k^2$')
 ax[2].set_xlim(0,1)
 ax[2].set_ylabel(r'$\langle \mathbf{v}_D \cdot \nabla \alpha \rangle \quad \left[ \frac{H}{q a^2 B_0} \right]$')
-ax[2].legend(loc='upper right')
+ax[2].legend()
 ax[0].set_aspect('auto')
 ax[1].set_aspect('auto')
 ax[2].set_aspect('auto')
@@ -133,7 +133,7 @@ w2_val      = djdpsi.min() + w_range2*y_text
 
 ax[0].text(theta_val,modb_val,r'(a)',   ha='center',va='center')
 ax[1].text(k_val,w_val,r'(b)',          ha='center',va='center')
-ax[2].text(k_val,w2_val,r'(c)',         ha='center',va='center')
+ax[2].text(1-k_val,w2_val,r'(c)',         ha='center',va='center')
 plt.savefig('CHM_comparison.eps')
 
 plt.show()
