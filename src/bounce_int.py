@@ -125,15 +125,17 @@ def bounce_integral(f,h,x,index,root,is_func=False):
         # make x xoordinate periodic
         xmin = x[0]
         xmax = x[-1]
-        per = lambda x: ((x - xmin)%(xmax-xmin)) + xmin
         # integrand
-        integrand = lambda x : h(per(x))/np.sqrt(np.abs(f(per(x))))
+        integrand = lambda x : h(x)/np.sqrt(np.abs(f(x)))
         for well_idx in range(num_wells):
             l_bound  = root[2*well_idx]
             r_bound = root[2*well_idx+1]
             if l_bound > r_bound:
-                r_bound = r_bound + xmax
-            val, err = scipy.integrate.quad(integrand,l_bound,r_bound)
+                val_left, err   = scipy.integrate.quad(integrand,l_bound,xmax)    
+                val_right, err  = scipy.integrate.quad(integrand,xmin,r_bound)
+                val = val_left + val_right
+            if l_bound < r_bound:
+                val, err  = scipy.integrate.quad(integrand,l_bound,r_bound)
             bounce_val.append(val)
     
     # do integral with gtrapz

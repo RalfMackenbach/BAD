@@ -73,7 +73,7 @@ for res_idx, res_val in enumerate(res):
     # calculate error
     true_res = drift(lam_arr)
     gtrapz_err[res_idx] = np.average(np.abs((gtrapz_ave-true_res)/true_res))
-    gtrapz_time[res_idx] = tot_time
+    gtrapz_time[res_idx] = tot_time/len(lam_arr)
 
 
 
@@ -111,7 +111,7 @@ for res_idx, res_val in enumerate(res):
     # calculate error
     true_res = drift(lam_arr)
     quad_err[res_idx] = np.average(np.abs((quad_ave-true_res)/true_res))
-    quad_time[res_idx] = tot_time
+    quad_time[res_idx] = tot_time/len(lam_arr)
 
 
 # now use qquad method (quadratic interpolator)
@@ -149,7 +149,7 @@ for res_idx, res_val in enumerate(res):
     # calculate error
     true_res = drift(lam_arr)
     qquad_err[res_idx] = np.average(np.abs((qquad_ave-true_res)/true_res))
-    qquad_time[res_idx] = tot_time
+    qquad_time[res_idx] = tot_time/len(lam_arr)
 
 
 # Plotting parameters 
