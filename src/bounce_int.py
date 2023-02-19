@@ -1,6 +1,7 @@
 # This file contains all subroutines used in the calculation bounce-averaged drifts
 import  numpy           as      np
-import  scipy
+from    scipy.optimize  import  brentq
+from    scipy.integrate import  quad
 
 
 def gtrapz(xi,xj,fi,fj,hi,hj):
@@ -19,56 +20,6 @@ def gtrapz(xi,xj,fi,fj,hi,hj):
     """
     ans = np.sum( 2 * (xj - xi) * (hj * np.sqrt(fj) - hi * np.sqrt(fi))/(fj-fi) - 4/3 * (xj - xi) * (hj - hi) * (np.power(fj,3/2)- np.power(fi,3/2))/np.square(fj - fi) )
     return ans
-
-
-# def find_zeros(f,x,is_func=False):
-#     r"""
-#     ``find_zeros`` finds the zeros of either a function f(x) or an array f.
-#     x is an array with the points on which f is evaluated for the root finding,
-#     if there are multiple roots between x[i] and x[i+1] it will not find all
-#     roots.
-#      Args:
-#         f:  either a function for which the roots will be found,
-#             or an array containing samples of f on the location 
-#             given by x_arr
-#         x:  array on which f is evaluated. If is_func=True,
-#             f will be evaluated on x and roots are found by
-#             finding sign flips. if is_func is false, these
-#             are simply the locations of the samples f.
-#         is_func:    if f is a function set to True, normal set to False
-                    
-#     """
-#     # we store the roots in a list, as we don't know a priori how many there will be.
-#     # we also store the indices left of the zero root
-#     index_list = []
-#     roots_list = []
-#     # find all roots if is_func is True
-#     if is_func==True:
-#         c = f(x)
-#         s = np.sign(c)
-#         for i in range(len(x)-1):
-#             if s[i] + s[i+1] == 0: # opposite signs
-#                 u = scipy.optimize.brentq(f, x[i], x[i+1])
-#                 z = f(u)
-#                 index_list.append(i)
-#                 roots_list.append(u)
-#     # find all roots if is_func is False    
-#     if is_func==False:
-#         s = np.sign(f)
-#         for i in range(len(x)-1):
-#             if s[i] + s[i+1] == 0: # opposite signs
-#                 u = x[i] - f[i] * (x[i+1] - x[i])/(f[i+1]-f[i])
-#                 index_list.append(i)
-#                 roots_list.append(u)
-
-#     # check if total number of roots is even.
-#     # edge cases with odd number of roots have NOT been implemented
-#     if len(roots_list) % 2 == 1:
-#         raise Exception("Odd number of bounce points, please adjust resolution or interpolation method.")
-
-#     # return all roots
-#     return index_list, roots_list
-
 
 
 def find_zeros(f,x,is_func=False):
@@ -97,7 +48,7 @@ def find_zeros(f,x,is_func=False):
         c = f(x)
         indi = np.where(c[1:]*c[0:-1] < 0.0)[0]
         for i in indi:
-            u = scipy.optimize.brentq(f, x[i], x[i+1])
+            u = brentq(f, x[i], x[i+1])
             z = f(u)
             index_list.append(i)
             roots_list.append(u)
@@ -116,6 +67,7 @@ def find_zeros(f,x,is_func=False):
 
     # return all roots
     return index_list, roots_list
+
 
 def check_first_well(f,x,index,is_func=False):
     r"""
@@ -176,11 +128,11 @@ def bounce_integral(f,h,x,index,root,is_func=False):
             l_bound  = root[2*well_idx]
             r_bound = root[2*well_idx+1]
             if l_bound > r_bound:
-                val_left, err   = scipy.integrate.quad(integrand,l_bound,xmax)    
-                val_right, err  = scipy.integrate.quad(integrand,xmin,r_bound)
+                val_left, err   = quad(integrand,l_bound,xmax)    
+                val_right, err  = quad(integrand,xmin,r_bound)
                 val = val_left + val_right
             if l_bound < r_bound:
-                val, err  = scipy.integrate.quad(integrand,l_bound,r_bound)
+                val, err  = quad(integrand,l_bound,r_bound)
             bounce_val.append(val)
     
     # do integral with gtrapz

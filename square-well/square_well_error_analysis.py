@@ -30,6 +30,9 @@ def drift(lam_val,al=1.0,apsi=1.5,b=1.0):
 
 
 
+#
+lam_res = 99
+
 
 
 # loop over res as well
@@ -53,7 +56,7 @@ for res_idx, res_val in enumerate(res):
     dbdpsi_arr  = dbdpsi(l_arr)
     # make array with lambdas and bounce-averaged quantities
     # we exclude the endpoint and starting point
-    lam_arr     = np.linspace(1/np.max(modb_arr),1/np.min(modb_arr),99,endpoint=False)
+    lam_arr     = np.linspace(1/np.max(modb_arr),1/np.min(modb_arr),lam_res,endpoint=False)
     lam_arr     = np.delete(lam_arr,  0)
     gtrapz_num  = np.empty_like(lam_arr)
     gtrapz_den  = np.empty_like(lam_arr)
@@ -88,7 +91,7 @@ for res_idx, res_val in enumerate(res):
     dbdpsi_arr  = dbdpsi(l_arr)
     # make array with lambdas and bounce-averaged quantities
     # we exclude the endpoint and starting point
-    lam_arr     = np.linspace(1/np.max(modb_arr),1/np.min(modb_arr),99,endpoint=False)
+    lam_arr     = np.linspace(1/np.max(modb_arr),1/np.min(modb_arr),lam_res,endpoint=False)
     lam_arr     = np.delete(lam_arr,  0)
     quad_num  = np.empty_like(lam_arr)
     quad_den  = np.empty_like(lam_arr)
@@ -125,7 +128,7 @@ for res_idx, res_val in enumerate(res):
     dbdpsi_arr  = dbdpsi(l_arr)
     # make array with lambdas and bounce-averaged quantities
     # we exclude the endpoint and starting point
-    lam_arr     = np.linspace(1/np.max(modb_arr),1/np.min(modb_arr),99,endpoint=False)
+    lam_arr     = np.linspace(1/np.max(modb_arr),1/np.min(modb_arr),lam_res,endpoint=False)
     lam_arr     = np.delete(lam_arr,  0)
     qquad_num  = np.empty_like(lam_arr)
     qquad_den  = np.empty_like(lam_arr)
@@ -178,7 +181,7 @@ ax[0].legend()
 ax[1].set_xlabel(r'$\hat{L}/\Delta \hat{\ell}$')
 ax[1].loglog(res,gtrapz_time,label='gtrapz')
 ax[1].loglog(res,quad_time,label='m-quad',linestyle='dashed')
-ax[1].loglog(res,qquad_time,label='q-quad',linestyle='dashdot')
+ax[1].loglog(res,qquad_time,label='c-quad',linestyle='dashdot')
 plt.savefig('error_square_well.eps')
 
 plt.show()

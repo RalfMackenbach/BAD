@@ -31,11 +31,12 @@ sqrtg   = data.sqrtg
 theta   = data.theta
 my_dpdx = data.my_dpdx
 
+lam_res=999
 
 
 
 # we exclude the endpoint and starting point
-lam_arr     = np.linspace(1/np.max(modb),1/np.min(modb),99,endpoint=False)
+lam_arr     = np.linspace(1/np.max(modb),1/np.min(modb),lam_res,endpoint=False)
 lam_arr     = np.delete(lam_arr,  0)
 # make list holding drifts
 cquad_num  = []
@@ -106,6 +107,19 @@ font = {'family': 'sans-serif',
 
 mpl.rc('font', **font)
 
+
+
+
+
+# reset gist data
+data = mag_reader.mag_data("s7_alpha5.txt")
+data.include_endpoint()
+# make the arrays
+L2      = data.L2
+modb    = data.modb
+sqrtg   = data.sqrtg
+theta   = data.theta
+my_dpdx = data.my_dpdx
 fig, ax = plt.subplots(4, 1, tight_layout=True, figsize=(3.5, 4/3*2.5*2.5))
 ax[0].plot(theta/np.pi,modb,color='black')
 twinax0 = ax[0].twinx()
@@ -124,7 +138,7 @@ ax[1].set_xlim(0,1)
 ax[1].set_ylabel(r'$ \langle \mathbf{v}_D \cdot \nabla \alpha \rangle \quad \left[ \frac{H}{q a^2 B_0} \right]$')
 ax[1].legend()
 ax[2].plot(k2,cquad2_ave[:,1],label='CW')
-ax[2].plot(k2,cquad2_ave[:,0],label='EW',linestyle='dashed')
+ax[2].plot(k2,cquad2_ave[:,2],label='EW',linestyle='dashed')
 ax[2].plot(k2,CHM_res,linestyle='dotted',color='black',label='CHM')
 ax[2].set_xlabel(r'$k^2$')
 ax[2].set_xlim(0,1)
