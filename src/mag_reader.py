@@ -62,12 +62,14 @@ class mag_data:
         self.g11    = data_arr[:,0]
         self.g12    = data_arr[:,1]
         self.g22    = data_arr[:,2]
-        self.modB   = data_arr[:,3]
+        self.modb   = data_arr[:,3]
         self.sqrtg  = data_arr[:,4]
         self.L2     = data_arr[:,5]
         self.L1     = data_arr[:,6]
         self.dBdz   = data_arr[:,7]
         self.theta  = np.linspace(-self.n_pol*np.pi,+self.n_pol*np.pi,self.gridpoints,endpoint=False)
+        self._endpoint_included = False
+        self._extended          = False
 
     def plot_geometry(self):
         import matplotlib.pyplot as plt
@@ -84,7 +86,7 @@ class mag_data:
         axs[0,1].set_title(r'$g_{12}$')
         axs[0,2].plot(self.theta/np.pi,self.g22,label='g22')
         axs[0,2].set_title(r'$g_{22}$')
-        axs[0,3].plot(self.theta/np.pi,self.modB,label='modB')
+        axs[0,3].plot(self.theta/np.pi,self.modb,label='modB')
         axs[0,3].set_title(r'$|B|$')
         axs[1,0].plot(self.theta/np.pi,self.L1,label='L1')
         axs[1,0].set_title(r'$\mathcal{L}_1$')
@@ -99,3 +101,121 @@ class mag_data:
         axs[1,2].set_xlabel(r'$\theta/\pi$')
         axs[1,3].set_xlabel(r'$\theta/\pi$')
         plt.show()
+
+    def include_endpoint(self):
+        if self._endpoint_included==False:
+            # assumes stellarator symmetry
+            self.g11    = np.append(self.g11,self.g11[0])
+            self.g12    = np.append(self.g12,-1*self.g12[0])
+            self.g22    = np.append(self.g22,self.g22[0])
+            self.modb   = np.append(self.modb,self.modb[0])
+            self.sqrtg  = np.append(self.sqrtg,self.sqrtg[0])
+            self.L2     = np.append(self.L2,self.L2[0])
+            self.L1     = np.append(self.L1,self.L1[0])
+            self.dBdz   = np.append(self.dBdz,self.dBdz[0])
+            self.theta  = np.append(self.theta,-1*self.theta[0])
+            self.gridpoint = self.gridpoints+1
+            self._endpoint_included=True
+
+    def extend_domain(self):
+        """
+        Extends the domain up to B_max on both sides. Assumes
+        That g12 is quasi-periodic, and that the field-lines is
+        stellarator symmetric.
+        """
+        if self._extended==False:
+            self.include_endpoint()
+            # to enforce the quasiperiodic boundary condition we simply extend the domain
+            # we first find all the positions where the magnetic field is maximal
+            max_idx = np.asarray(np.argwhere(self.modb == np.amax(self.modb))).flatten()
+            l_max   = max_idx[0]
+            r_max   = max_idx[-1]
+
+            # we now extract the non-periodic part
+            # kappa_g can readily be extracted from L1
+            kappa_g = self.L1 / np.sqrt(self.g11)
+            # the cotangent of the angle is also readily found
+            cot_ang = self.g12 / self.modb
+            # construct the quasi-periodic term of L2
+            L2qsp =-kappa_g * cot_ang * self.modb/ np.sqrt(self.g11)
+            # subtracting the quasi-periodic part should results in a periodic function
+            L2per = self.L2 - L2qsp
+
+            # now we extend the left and right sides of the domain
+            # we first focus on appending the various parts needed
+            cot_app = cot_ang[0:l_max+1]- cot_ang[0]
+            the_app = self.theta[0:l_max+1]  - self.theta[0]
+            g12_app = self.g12[0:l_max+1]  - self.g12[0]
+
+            # append! 
+            # first the quasi-periodic functions
+            cot_ext     = np.append(cot_ang,cot_app[1::]+cot_ang[-1])
+            g12_ext     = np.append(self.g12,g12_app[1::]+self.g12[-1])
+            theta_ext   = np.append(self.theta,the_app[1::]+self.theta[-1])
+            # next the periodic functions
+            L2per_ext   = np.append(L2per,L2per[1:l_max+1])
+            g11_ext     = np.append(self.g11,self.g11[1:l_max+1])
+            modb_ext    = np.append(self.modb,self.modb[1:l_max+1])
+            kappa_g_ext = np.append(kappa_g,kappa_g[1:l_max+1])
+            sqrtg_ext   = np.append(self.sqrtg,self.sqrtg[1:l_max+1])
+            L1_ext      = np.append(self.L1,self.L1[1:l_max+1])
+            dBdz_ext    = np.append(self.dBdz,self.dBdz[1:l_max+1])
+
+            # now we focus on prepending the various needed components
+            cot_pre = cot_ang[r_max::]- cot_ang[-1]
+            the_pre = self.theta[r_max::]  - self.theta[-1]
+            g12_pre = self.g12[r_max::]  - self.g12[-1]
+
+            # prepend!
+            # first the quasi-periodic functions
+            cot_ext     = np.concatenate((cot_pre[0:-1]+cot_ang[0],cot_ext))
+            g12_ext     = np.concatenate((g12_pre[0:-1]+self.g12[0],g12_ext))
+            theta_ext   = np.concatenate((the_pre[0:-1]+self.theta[0],theta_ext))
+            # now the periodic functions 
+            L2per_ext   = np.concatenate((L2per[r_max:-1],L2per_ext))
+            g11_ext     = np.concatenate((self.g11[r_max:-1],g11_ext))
+            modb_ext    = np.concatenate((self.modb[r_max:-1],modb_ext))
+            kappa_g_ext = np.concatenate((kappa_g[r_max:-1],kappa_g_ext))
+            sqrtg_ext   = np.concatenate((self.sqrtg[r_max:-1],sqrtg_ext))
+            L1_ext      = np.concatenate((self.L1[r_max:-1],L1_ext))
+            dBdz_ext    = np.concatenate((self.dBdz[r_max:-1],dBdz_ext))
+
+
+            # now construct L2 
+            L2qsp_ext = -kappa_g_ext * cot_ext * modb_ext/ np.sqrt(g11_ext)
+            L2_ext = L2per_ext + L2qsp_ext
+
+
+            # assign to self 
+            self.theta  = theta_ext
+            self.g11    = g11_ext
+            self.g12    = g12_ext
+            self.modb   = modb_ext
+            self.sqrtg  = sqrtg_ext
+            self.L2     = L2_ext
+            self.L1     = L1_ext
+            self.dBdz   = dBdz_ext
+            self.g22    = (modb_ext**2 + g12_ext**2)/g11_ext**2
+            self._extended = True
+
+    def truncate_domain(self):
+        """
+        Truncates domain between two B_maxs.
+        """
+        self.include_endpoint()
+        # to enforce the quasiperiodic boundary condition we simply extend the domain
+        # we first find all the positions where the magnetic field is maximal
+        max_idx = np.asarray(np.argwhere(self.modb == np.amax(self.modb))).flatten()
+        l_max   = max_idx[0]
+        r_max   = max_idx[-1]
+
+        
+        self.theta  = self.theta[l_max:r_max+1]
+        self.g11    = self.g11[l_max:r_max+1]
+        self.g12    = self.g12[l_max:r_max+1]
+        self.modb   = self.modb[l_max:r_max+1]
+        self.sqrtg  = self.sqrtg[l_max:r_max+1]
+        self.L2     = self.L2[l_max:r_max+1]
+        self.L1     = self.L1[l_max:r_max+1]
+        self.dBdz   = self.dBdz[l_max:r_max+1]
+        self.g22    = self.g22[l_max:r_max+1]

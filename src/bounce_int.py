@@ -21,6 +21,56 @@ def gtrapz(xi,xj,fi,fj,hi,hj):
     return ans
 
 
+# def find_zeros(f,x,is_func=False):
+#     r"""
+#     ``find_zeros`` finds the zeros of either a function f(x) or an array f.
+#     x is an array with the points on which f is evaluated for the root finding,
+#     if there are multiple roots between x[i] and x[i+1] it will not find all
+#     roots.
+#      Args:
+#         f:  either a function for which the roots will be found,
+#             or an array containing samples of f on the location 
+#             given by x_arr
+#         x:  array on which f is evaluated. If is_func=True,
+#             f will be evaluated on x and roots are found by
+#             finding sign flips. if is_func is false, these
+#             are simply the locations of the samples f.
+#         is_func:    if f is a function set to True, normal set to False
+                    
+#     """
+#     # we store the roots in a list, as we don't know a priori how many there will be.
+#     # we also store the indices left of the zero root
+#     index_list = []
+#     roots_list = []
+#     # find all roots if is_func is True
+#     if is_func==True:
+#         c = f(x)
+#         s = np.sign(c)
+#         for i in range(len(x)-1):
+#             if s[i] + s[i+1] == 0: # opposite signs
+#                 u = scipy.optimize.brentq(f, x[i], x[i+1])
+#                 z = f(u)
+#                 index_list.append(i)
+#                 roots_list.append(u)
+#     # find all roots if is_func is False    
+#     if is_func==False:
+#         s = np.sign(f)
+#         for i in range(len(x)-1):
+#             if s[i] + s[i+1] == 0: # opposite signs
+#                 u = x[i] - f[i] * (x[i+1] - x[i])/(f[i+1]-f[i])
+#                 index_list.append(i)
+#                 roots_list.append(u)
+
+#     # check if total number of roots is even.
+#     # edge cases with odd number of roots have NOT been implemented
+#     if len(roots_list) % 2 == 1:
+#         raise Exception("Odd number of bounce points, please adjust resolution or interpolation method.")
+
+#     # return all roots
+#     return index_list, roots_list
+
+
+
 def find_zeros(f,x,is_func=False):
     r"""
     ``find_zeros`` finds the zeros of either a function f(x) or an array f.
@@ -42,24 +92,22 @@ def find_zeros(f,x,is_func=False):
     # we also store the indices left of the zero root
     index_list = []
     roots_list = []
-    # find all roots if is_func is True
+    # find all roots 
     if is_func==True:
         c = f(x)
-        s = np.sign(c)
-        for i in range(len(x)-1):
-            if s[i] + s[i+1] == 0: # opposite signs
-                u = scipy.optimize.brentq(f, x[i], x[i+1])
-                z = f(u)
-                index_list.append(i)
-                roots_list.append(u)
+        indi = np.where(c[1:]*c[0:-1] < 0.0)[0]
+        for i in indi:
+            u = scipy.optimize.brentq(f, x[i], x[i+1])
+            z = f(u)
+            index_list.append(i)
+            roots_list.append(u)
     # find all roots if is_func is False    
     if is_func==False:
-        s = np.sign(f)
-        for i in range(len(x)-1):
-            if s[i] + s[i+1] == 0: # opposite signs
-                u = x[i] - f[i] * (x[i+1] - x[i])/(f[i+1]-f[i])
-                index_list.append(i)
-                roots_list.append(u)
+        indi = np.where(f[1:]*f[0:-1] < 0.0)[0]
+        for i in indi:
+            u = x[i] - f[i] * (x[i+1] - x[i])/(f[i+1]-f[i])
+            index_list.append(i)
+            roots_list.append(u)
 
     # check if total number of roots is even.
     # edge cases with odd number of roots have NOT been implemented
@@ -68,7 +116,6 @@ def find_zeros(f,x,is_func=False):
 
     # return all roots
     return index_list, roots_list
-
 
 def check_first_well(f,x,index,is_func=False):
     r"""

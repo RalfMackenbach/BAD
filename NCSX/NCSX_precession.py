@@ -34,7 +34,7 @@ dydalpha    = a_minor * np.sqrt(s_val)
 
 
 # make lambda array
-lam_arr     = np.linspace(1/modb.max(),1/modb.min(),1001,endpoint=False)
+lam_arr     = np.linspace(1/modb.max(),1/modb.min(),lam_res,endpoint=False)
 lam_arr     = np.delete(lam_arr, 0)
 gtrapz_arr_alpha    = []
 gtrapz_arr_psi      = []
