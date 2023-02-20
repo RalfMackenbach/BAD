@@ -8,7 +8,7 @@ from scipy import interpolate as interp
 
 
 # we set numerical parameters here
-lam_res = 10000
+lam_res = 1000
 
 # constants
 a_minor     = 0.32263403803766705
@@ -27,6 +27,22 @@ curv_alpha  = np.load('curv_alpha.npy')
 jac         = np.load('jac.npy')
 theta       = np.load('theta.npy')
 dldtheta    = np.abs(modb/jac)
+
+
+# find maximal values 
+max_idx = np.asarray(np.argwhere(modb == np.amax(modb))).flatten()
+l_max   = max_idx[0]
+r_max   = max_idx[-1]
+
+# adjust all arrays
+modb        = modb[l_max:r_max]
+grad_psi    = grad_psi[l_max:r_max]
+curv_psi    = curv_psi[l_max:r_max]
+grad_alpha  = grad_alpha[l_max:r_max]
+curv_alpha  = curv_alpha[l_max:r_max]
+jac         = jac[l_max:r_max]
+theta       = theta[l_max:r_max]
+dldtheta    = dldtheta[l_max:r_max]
 
 rho = np.sqrt(s_val)
 drdpsi      = a_minor/(2* np.sqrt(s_val) * psi_edge)
@@ -112,10 +128,10 @@ print(mask_bound)
 
 # make scatter plot
 fig, ax = plt.subplots(2, 1, tight_layout=True, figsize=(3.5, 5.0))
-ax[0].scatter(k2_alp,mask_bound*walp_arr,s=0.2,marker='.',color='black',label='g-trapz')
-ax[0].scatter(k2_alp,mask_centr*walp_arr,s=0.2,marker='.',color='red',label='g-trapz')
-ax[1].scatter(k2_psi,mask_bound*wpsi_arr,s=0.2,marker='.',color='black',label='g-trapz')
-ax[1].scatter(k2_psi,mask_centr*wpsi_arr,s=0.2,marker='.',color='red',label='g-trapz')
+ax[0].scatter(k2_alp,mask_bound*walp_arr,s=0.2,marker='.',color='black',label='g-trapz',facecolors='black')
+ax[0].scatter(k2_alp,mask_centr*walp_arr,s=0.2,marker='.',color='red',label='g-trapz',facecolors='red')
+ax[1].scatter(k2_psi,mask_bound*wpsi_arr,s=0.2,marker='.',color='black',label='g-trapz',facecolors='black')
+ax[1].scatter(k2_psi,mask_centr*wpsi_arr,s=0.2,marker='.',color='red',label='g-trapz',facecolors='red')
 ax[0].set_xlabel(r'$k^2$')
 ax[0].set_xlim(0,1)
 ax[0].set_ylabel(r'$\langle \hat{\mathbf{v}}_D \cdot \nabla y \rangle$')

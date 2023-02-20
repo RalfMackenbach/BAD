@@ -31,7 +31,7 @@ sqrtg   = data.sqrtg
 theta   = data.theta
 my_dpdx = data.my_dpdx
 
-lam_res=999
+lam_res=99
 
 
 

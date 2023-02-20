@@ -42,9 +42,17 @@ def read_columns(file_name):
 
 
 
+def periodic_extender(arr,l_max,r_max):
+    arr_app     = arr[1:l_max+1]
+    arr_pre     = arr[r_max:-1]
+    arr_ext     = np.concatenate((arr_pre,arr,arr_app))
+    return  arr_ext
+
+
+
 class mag_data:
     """
-    Reads magnetic field data.
+    Reads magnetic field data. Assumes GIST file.
     """
     def __init__(self, file_name):
 
@@ -72,6 +80,13 @@ class mag_data:
         self._extended          = False
 
     def plot_geometry(self):
+        """
+        Plots domain saved in self. One can plot truncated/extended
+        domain simply by doing 
+        data = mag_data(filename)
+        data.truncate_domain()
+        data.plot_geometry()
+        """
         import matplotlib.pyplot as plt
         import matplotlib        as mpl
         font = {'family': 'sans-serif',
@@ -119,9 +134,8 @@ class mag_data:
 
     def extend_domain(self):
         """
-        Extends the domain up to B_max on both sides. Assumes
-        That g12 is quasi-periodic, and that the field-lines is
-        stellarator symmetric.
+        Extends the domain up to B_max on both sides,
+        using the quasi-periodic boundary condition.
         """
         if self._extended==False:
             self.include_endpoint()
@@ -131,59 +145,40 @@ class mag_data:
             l_max   = max_idx[0]
             r_max   = max_idx[-1]
 
-            # we now extract the non-periodic part
-            # kappa_g can readily be extracted from L1
-            kappa_g = self.L1 / np.sqrt(self.g11)
-            # the cotangent of the angle is also readily found
-            cot_ang = self.g12 / self.modb
-            # construct the quasi-periodic term of L2
-            L2qsp =-kappa_g * cot_ang * self.modb/ np.sqrt(self.g11)
+            # make extended theta_arr 
+            the_app     = self.theta[1:l_max+1] - self.theta[0] +   self.theta[-1]
+            the_pre     = self.theta[r_max:-1]  - self.theta[-1]+   self.theta[0]
+            theta_ext   = np.append(self.theta,the_app)
+            theta_ext   = np.concatenate((the_pre,theta_ext))
+
+            # make extended g11
+            g11_ext     = periodic_extender(self.g11,l_max,r_max)
+
+            # use relations for nonperiodic functions
+            secarr      = self.shat*self.theta*self.g11
+            g12arr      = self.g12
+            # construct periodic part
+            g12per      = g12arr-secarr
+            # make extended periodic array
+            g12per_ext  = periodic_extender(g12per,l_max,r_max)
+            # now construct extended g12
+            g12_ext     = g12per_ext + self.shat*theta_ext*g11_ext
+            
+            # now construct extended L2 
+            kappag      = self.L1 / np.sqrt(self.g11)
+            L2sec       =-kappag * g12arr * self.modb/ np.sqrt(self.g11)
             # subtracting the quasi-periodic part should results in a periodic function
-            L2per = self.L2 - L2qsp
+            L2per       = self.L2 - L2sec
+            L2per_ext   = periodic_extender(L2per,l_max,r_max)
+            # make extended periodic array
+            kappag_ext  = periodic_extender(kappag,l_max,r_max)
+            modb_ext    = periodic_extender(self.modb,l_max,r_max)
+            # now construct L2_ext 
+            L2sec_ext   = -kappag_ext*g12_ext*modb_ext/np.sqrt(g11_ext)
+            L2_ext      = L2per_ext  + L2sec_ext
 
-            # now we extend the left and right sides of the domain
-            # we first focus on appending the various parts needed
-            cot_app = cot_ang[0:l_max+1]- cot_ang[0]
-            the_app = self.theta[0:l_max+1]  - self.theta[0]
-            g12_app = self.g12[0:l_max+1]  - self.g12[0]
-
-            # append! 
-            # first the quasi-periodic functions
-            cot_ext     = np.append(cot_ang,cot_app[1::]+cot_ang[-1])
-            g12_ext     = np.append(self.g12,g12_app[1::]+self.g12[-1])
-            theta_ext   = np.append(self.theta,the_app[1::]+self.theta[-1])
-            # next the periodic functions
-            L2per_ext   = np.append(L2per,L2per[1:l_max+1])
-            g11_ext     = np.append(self.g11,self.g11[1:l_max+1])
-            modb_ext    = np.append(self.modb,self.modb[1:l_max+1])
-            kappa_g_ext = np.append(kappa_g,kappa_g[1:l_max+1])
-            sqrtg_ext   = np.append(self.sqrtg,self.sqrtg[1:l_max+1])
-            L1_ext      = np.append(self.L1,self.L1[1:l_max+1])
-            dBdz_ext    = np.append(self.dBdz,self.dBdz[1:l_max+1])
-
-            # now we focus on prepending the various needed components
-            cot_pre = cot_ang[r_max::]- cot_ang[-1]
-            the_pre = self.theta[r_max::]  - self.theta[-1]
-            g12_pre = self.g12[r_max::]  - self.g12[-1]
-
-            # prepend!
-            # first the quasi-periodic functions
-            cot_ext     = np.concatenate((cot_pre[0:-1]+cot_ang[0],cot_ext))
-            g12_ext     = np.concatenate((g12_pre[0:-1]+self.g12[0],g12_ext))
-            theta_ext   = np.concatenate((the_pre[0:-1]+self.theta[0],theta_ext))
-            # now the periodic functions 
-            L2per_ext   = np.concatenate((L2per[r_max:-1],L2per_ext))
-            g11_ext     = np.concatenate((self.g11[r_max:-1],g11_ext))
-            modb_ext    = np.concatenate((self.modb[r_max:-1],modb_ext))
-            kappa_g_ext = np.concatenate((kappa_g[r_max:-1],kappa_g_ext))
-            sqrtg_ext   = np.concatenate((self.sqrtg[r_max:-1],sqrtg_ext))
-            L1_ext      = np.concatenate((self.L1[r_max:-1],L1_ext))
-            dBdz_ext    = np.concatenate((self.dBdz[r_max:-1],dBdz_ext))
-
-
-            # now construct L2 
-            L2qsp_ext = -kappa_g_ext * cot_ext * modb_ext/ np.sqrt(g11_ext)
-            L2_ext = L2per_ext + L2qsp_ext
+            # construct g22
+            g22_ext     = (modb_ext**2 + g12_ext**2)/g11_ext**2
 
 
             # assign to self 
@@ -191,16 +186,19 @@ class mag_data:
             self.g11    = g11_ext
             self.g12    = g12_ext
             self.modb   = modb_ext
-            self.sqrtg  = sqrtg_ext
+            self.sqrtg  = periodic_extender(self.sqrtg,l_max,r_max)
             self.L2     = L2_ext
-            self.L1     = L1_ext
-            self.dBdz   = dBdz_ext
-            self.g22    = (modb_ext**2 + g12_ext**2)/g11_ext**2
+            self.L1     = periodic_extender(self.L1,l_max,r_max)
+            self.dBdz   = periodic_extender(self.dBdz,l_max,r_max)
+            self.g22    = g22_ext
             self._extended = True
+
 
     def truncate_domain(self):
         """
-        Truncates domain between two B_maxs.
+        Truncates domain between two B_max's.
+        Assumes there are at least two B_max of equal value.
+        If not, the arrays become of length one.
         """
         self.include_endpoint()
         # to enforce the quasiperiodic boundary condition we simply extend the domain

@@ -25,6 +25,11 @@ dydalpha    = a_minor * np.sqrt(s_val)
 theta = theta/np.pi
 
 
+# find maximal values 
+max_idx = np.asarray(np.argwhere(modb == np.amax(modb))).flatten()
+l_max   = max_idx[0]
+r_max   = max_idx[-1]
+
 # Plottng Parameters #
 plt.close('all')
 
@@ -34,9 +39,13 @@ font = {'family': 'sans-serif',
 
 mpl.rc('font', **font)
 
+
+theta_min = theta[l_max]
+theta_max = theta[r_max]
+
 fig, ax1 = plt.subplots(1, 1, tight_layout=True, figsize=(3.5, 2.5))
 ax1.plot(theta,modb,color='black')
-ax1.set_xlim(-1,1)
+ax1.set_xlim(theta_min,theta_max)
 ax1.set_xlabel(r'$\theta/\pi$')
 ax1.set_ylabel(r'$B \quad [\mathrm{T}]$')
 ax2 = ax1.twinx()
