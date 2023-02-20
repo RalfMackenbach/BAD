@@ -1,5 +1,5 @@
 # BAD
-## A repo documenting various means of calculating the Bounce Averaged Drifts.
+## A repo for calculating the Bounce Averaged Drifts
 
 ### Main idea
 This code contains three example cases of calculating the bounce-averaged drift, namely a s square well, a large-aspect ratio circular tokamak, and NCSX. These examples use different numerical methods of calculating the drift, and the differences in runtime and accuracy can be large. It furthermore uses different boundary conditions (periodic or quasi-periodic), the bounce-averaged drifts of particles which cross the boundary may change significantly. 
