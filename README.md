@@ -38,8 +38,8 @@ The roots are returned in an array, where each consecutive pair belongs to one r
 
 
 ### Some general remarks
-Typically, `is_func=False` should be used in situations where speed is preferred over accuracy (such optimisation loops or large database scans). Conversely `is_func=True` should be used in scenarios where accuracy is preferred. 
+Typically, `is_func=False` should be used in situations where speed is preferred over accuracy (such as optimisation loops or large database scans). Conversely `is_func=True` should be used in scenarios where accuracy is preferred. 
 
 The code is written to deal with periodic boundary conditions for the functions `f(x)` and `h(x)`. Such a boundary condition may be exceptionally poor for devices with high shear, as `h(x)=v_D.nabla_alpha` has a linear term. To use a quasi-linear boundary condition, it is recommended to simply extrapolate the domain to the next B_max so that the boundary condition is unimportant. An example of this is given in the CHM folder.
 
-If one wishes to calculate the bounce time, the binormal drift, and the radial drift in go, it is best to construct a function that does so manually. This is because each call of `bounce_integral_wrapper(f,h,x)` calculates the roots again given the input. The roots don't change if one only varies `h(x)`, so one can best construct a new function which calculates the roots only once. Please construct a new function using `bounce_integral_wrapper(f,h,x,is_func=False,return_roots=False)` to do so - it would only require minor changes.
+If one wishes to calculate the bounce time, the binormal drift, and the radial drift in one go, it is best to construct a function that does so manually. This is because each call of `bounce_integral_wrapper(f,h,x)` calculates the roots again given the input. The roots don't change if one only varies `h(x)`, so one can best construct a new function which calculates the roots only once. Please construct a new function using `bounce_integral_wrapper(f,h,x,is_func=False,return_roots=False)` to do so - it would only require minor changes.
