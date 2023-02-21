@@ -11,7 +11,7 @@ brentq_tol = 1e-20
 ts_tol     = 1e-12
 
 
-def gtrapz(xi,xj,fi,fj,hi,hj):
+def _gtrapz(xi,xj,fi,fj,hi,hj):
     r"""
     ``gtrapz`` estimates integrals of the form
     .. math::
@@ -25,11 +25,15 @@ def gtrapz(xi,xj,fi,fj,hi,hj):
         hi: array containing left points of h(x)
         hj: array containing right points of h(x)
     """
-    ans = np.sum( 2 * (xj - xi) * (hj * np.sqrt(fj) - hi * np.sqrt(fi))/(fj-fi) - 4/3 * (xj - xi) * (hj - hi) * (np.power(fj,3/2)- np.power(fi,3/2))/np.square(fj - fi) )
-    return ans
+    # include limit 
+    ans = np.asarray(1/2 * (xj - xi) * (hi + hj)/ np.sqrt(1/2*(fi+fj)))
+    # do operations
+    ans = np.divide( 2 * (xj - xi) * (hj * np.sqrt(fj) - hi * np.sqrt(fi))*(fj-fi) - 4/3 * (xj - xi) * (hj - hi) * (np.power(fj,3/2)- np.power(fi,3/2)), np.square(fj-fi),
+                    out=ans,where=fi!=fj)       
+    return np.sum(ans)
 
 
-def find_zeros(f,x,is_func=False):
+def _find_zeros(f,x,is_func=False):
     r"""
     ``find_zeros`` finds the zeros of either a function f(x) or an array f.
     x is an array with the points on which f is evaluated for the root finding,
@@ -76,7 +80,7 @@ def find_zeros(f,x,is_func=False):
     return index_list, roots_list
 
 
-def check_first_well(f,x,index,is_func=False):
+def _check_first_well(f,x,index,is_func=False):
     r"""
     ``check_first_well`` checks is the first root of f(x) is the start of a well
     or the end. Returns True if it is the start, false if it is the end.
@@ -102,7 +106,7 @@ def check_first_well(f,x,index,is_func=False):
     return ans
 
 
-def bounce_integral(f,h,x,index,root,is_func=False,sinhtanh=False):
+def _bounce_integral(f,h,x,index,root,is_func=False,sinhtanh=False):
     r"""
     ``bounce_integral`` does the bounce integral
     .. math::
@@ -208,11 +212,11 @@ def bounce_integral(f,h,x,index,root,is_func=False,sinhtanh=False):
                 xj = x[l_idx+2:r_idx+1]
                 fj = f[l_idx+2:r_idx+1]
                 hj = h[l_idx+2:r_idx+1]
-                inner_int = gtrapz(xi,xj,fi,fj,hi,hj)
+                inner_int = _gtrapz(xi,xj,fi,fj,hi,hj)
                 # do left edge 
-                left_int  = gtrapz(l_bound,x[l_idx+1],0.0,f[l_idx+1],hl_cross,h[l_idx+1])
+                left_int  = _gtrapz(l_bound,x[l_idx+1],0.0,f[l_idx+1],hl_cross,h[l_idx+1])
                 # do right edge 
-                right_int = gtrapz(x[r_idx],r_bound,f[r_idx],0.0,h[r_idx],hr_cross)
+                right_int = _gtrapz(x[r_idx],r_bound,f[r_idx],0.0,h[r_idx],hr_cross)
                 # compute total int
                 val = left_int + inner_int + right_int  
             if l_bound > r_bound:
@@ -223,7 +227,7 @@ def bounce_integral(f,h,x,index,root,is_func=False,sinhtanh=False):
                 xj = x[l_idx+2::]
                 fj = f[l_idx+2::]
                 hj = h[l_idx+2::]
-                inner_int = gtrapz(xi,xj,fi,fj,hi,hj)
+                inner_int = _gtrapz(xi,xj,fi,fj,hi,hj)
                 # do inner integral (start to r)
                 xi = x[0:r_idx]
                 fi = f[0:r_idx]
@@ -231,11 +235,11 @@ def bounce_integral(f,h,x,index,root,is_func=False,sinhtanh=False):
                 xj = x[1:r_idx+1]
                 fj = f[1:r_idx+1]
                 hj = h[1:r_idx+1]
-                inner_int = inner_int + gtrapz(xi,xj,fi,fj,hi,hj)
+                inner_int = inner_int + _gtrapz(xi,xj,fi,fj,hi,hj)
                 # do left edge 
-                left_int  = gtrapz(l_bound,x[l_idx+1],0.0,f[l_idx+1],hl_cross,h[l_idx+1])
+                left_int  = _gtrapz(l_bound,x[l_idx+1],0.0,f[l_idx+1],hl_cross,h[l_idx+1])
                 # do right edge 
-                right_int = gtrapz(x[r_idx],r_bound,f[r_idx],0.0,h[r_idx],hr_cross)
+                right_int = _gtrapz(x[r_idx],r_bound,f[r_idx],0.0,h[r_idx],hr_cross)
                 # compute total int
                 val = left_int + inner_int + right_int  
             # append value to bounce vals
@@ -259,22 +263,22 @@ def bounce_integral_wrapper(f,h,x,is_func=False,return_roots=False,sinhtanh=Fals
     # if f is not a function use gtrapz
     if is_func==False:
         # if false use array for root finding
-        index,root = find_zeros(f,x,is_func=False)
+        index,root = _find_zeros(f,x,is_func=False)
         # check if first well is edge, if so roll
-        first_well = check_first_well(f,x,index,is_func=False)
+        first_well = _check_first_well(f,x,index,is_func=False)
         if first_well==False:
             index = np.roll(index,1)
             root = np.roll(root,1)
         # do bounce integral
-        bounce_val = bounce_integral(f,h,x,index,root,is_func=False,sinhtanh=False)
+        bounce_val = _bounce_integral(f,h,x,index,root,is_func=False,sinhtanh=False)
     # if is_func is true, use it for both root finding and integration
     if is_func==True: 
-        index,root = find_zeros(f,x,is_func=True)
-        first_well = check_first_well(f,x,index,is_func=True)
+        index,root = _find_zeros(f,x,is_func=True)
+        first_well = _check_first_well(f,x,index,is_func=True)
         if first_well==False:
             index = np.roll(index,1)
             root = np.roll(root,1)
-        bounce_val = bounce_integral(f,h,x,index,root,is_func=True,sinhtanh=sinhtanh)
+        bounce_val = _bounce_integral(f,h,x,index,root,is_func=True,sinhtanh=sinhtanh)
     if return_roots==False:
         return bounce_val
     if return_roots==True:
