@@ -1,6 +1,6 @@
 import sys
 sys.path.append('/Users/ralfmackenbach/Documents/GitHub/Bounce-averaged-drift/BAD/src/')  
-import bounce_int
+from BAD import bounce_int
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib        as mpl
@@ -8,7 +8,7 @@ from scipy import interpolate as interp
 
 
 # we set numerical parameters here
-lam_res = 1000
+lam_res = 10000
 
 # constants
 a_minor     = 0.32263403803766705
@@ -124,7 +124,6 @@ wpsi_arr    = a_minor * drdpsi * wpsi_arr
 # make masks
 mask_centr[mask_centr == False] = np.nan
 mask_bound[mask_bound == False] = np.nan
-print(mask_bound)
 
 # make scatter plot
 fig, ax = plt.subplots(2, 1, tight_layout=True, figsize=(3.5, 5.0))

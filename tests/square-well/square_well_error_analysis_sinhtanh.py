@@ -1,6 +1,5 @@
 import sys
-sys.path.append('/Users/ralfmackenbach/Documents/GitHub/Bounce-averaged-drift/BAD/src/')  
-import bounce_int
+from BAD import bounce_int
 import numpy as np
 import time
 import scipy.interpolate as interp
@@ -36,14 +35,17 @@ lam_res = 99
 
 
 # loop over res as well
-res = np.rint(np.logspace(1,6,6,endpoint=True)).astype(int)+1
+res = np.rint(np.logspace(1,5,5,endpoint=True)).astype(int)+1
 print(res)
 gtrapz_err = np.zeros(len(res))
 quad_err = np.zeros(len(res))
 qquad_err = np.zeros(len(res))
+stqquad_err = np.zeros(len(res))
 gtrapz_time = np.zeros(len(res))
 quad_time = np.zeros(len(res))
 qquad_time = np.zeros(len(res))
+stqquad_time = np.zeros(len(res))
+
 
 # first do gtrapz method
 for res_idx, res_val in enumerate(res):
@@ -62,7 +64,7 @@ for res_idx, res_val in enumerate(res):
     gtrapz_den  = np.empty_like(lam_arr)
     gtrapz_ave  = np.empty_like(lam_arr)
     # call on function once already to make sure all is loaded
-    tau_b   = bounce_int.bounce_integral_wrapper(1.0 - lam_arr[1]*modb_arr,dldl,l_arr,is_func=False)
+    tau_b   = bounce_int.bounce_integral_wrapper(1.0 - lam_arr[0]*modb_arr,dldl,l_arr,is_func=False)
     # now calculate for various lambda
     start_time = time.time()
     for idx, lam_val in enumerate(lam_arr):
@@ -117,7 +119,7 @@ for res_idx, res_val in enumerate(res):
     quad_time[res_idx] = tot_time/len(lam_arr)
 
 
-# now use qquad method (quadratic interpolator)
+# now use cquad method (cubic interpolator)
 for res_idx, res_val in enumerate(res):
     l_arr       = np.linspace(-2,2,res_val)
     # dl/dl is unity
@@ -155,6 +157,45 @@ for res_idx, res_val in enumerate(res):
     qquad_time[res_idx] = tot_time/len(lam_arr)
 
 
+
+# now use cquad method (cubic interpolator) with sinhtanh
+for res_idx, res_val in enumerate(res):
+    l_arr       = np.linspace(-2,2,res_val)
+    # dl/dl is unity
+    dldl       = np.ones_like(l_arr)
+    # mod b
+    modb_arr    = modb(l_arr)
+    # dbdpsi 
+    dbdpsi_arr  = dbdpsi(l_arr)
+    # make array with lambdas and bounce-averaged quantities
+    # we exclude the endpoint and starting point
+    lam_arr     = np.linspace(1/np.max(modb_arr),1/np.min(modb_arr),lam_res,endpoint=False)
+    lam_arr     = np.delete(lam_arr,  0)
+    stqquad_num  = np.empty_like(lam_arr)
+    stqquad_den  = np.empty_like(lam_arr)
+    stqquad_ave  = np.empty_like(lam_arr)
+    # make interpolated functions
+    kind='cubic'
+    modb_interp = interp.interp1d(l_arr, modb_arr,kind=kind)
+    dldldbdpsi_interp = interp.interp1d(l_arr, dldl*dbdpsi_arr,kind=kind)
+    dldl_interp = interp.interp1d(l_arr, dldl,kind=kind)
+    # now calculate for various lambda
+    start_time = time.time()
+    for idx, lam_val in enumerate(lam_arr):
+        f = lambda x: 1.0 - lam_val*modb_interp(x)
+        h_alpha = lambda x: -1.0 * lam_val * dldldbdpsi_interp(x)
+        tau_b   = bounce_int.bounce_integral_wrapper(f,dldl_interp,l_arr,is_func=True,sinhtanh=True)
+        d_alpha = bounce_int.bounce_integral_wrapper(f,h_alpha,l_arr,is_func=True,sinhtanh=True)
+        stqquad_den[idx] = tau_b[0]
+        stqquad_num[idx] = d_alpha[0]
+        stqquad_ave[idx] = d_alpha[0]/tau_b[0]
+    tot_time = time.time() - start_time
+    # calculate error
+    true_res = drift(lam_arr)
+    stqquad_err[res_idx] = np.average(np.abs((qquad_ave-true_res)/true_res))
+    stqquad_time[res_idx] = tot_time/len(lam_arr)
+
+
 # Plotting parameters 
 plt.close('all')
 
@@ -175,6 +216,7 @@ ax[0].loglog(res,10*gtrapz_err[-1]*(res[-1]/res)**1.5,color='black',linestyle='d
 ax[0].loglog(res,gtrapz_err,label='gtrapz')
 ax[0].loglog(res,quad_err,label='m-quad',linestyle='dashed')
 ax[0].loglog(res,qquad_err,label='c-quad',linestyle='dashdot')
+ax[0].loglog(res,stqquad_err,label='c-stquad',linestyle='dotted')
 ax[0].set_ylabel(r'Error')
 ax[1].set_ylabel(r'Time')
 ax[0].legend()
@@ -182,6 +224,7 @@ ax[1].set_xlabel(r'$\hat{L}/\Delta \hat{\ell}$')
 ax[1].loglog(res,gtrapz_time,label='gtrapz')
 ax[1].loglog(res,quad_time,label='m-quad',linestyle='dashed')
 ax[1].loglog(res,qquad_time,label='c-quad',linestyle='dashdot')
+ax[1].loglog(res,stqquad_time,label='c-stquad',linestyle='dotted')
 plt.savefig('error_square_well.eps')
 
 plt.show()
