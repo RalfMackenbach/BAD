@@ -2,6 +2,10 @@
 import  numpy           as      np
 from    scipy.optimize  import  brentq
 from    scipy.integrate import  quad
+import  tanh_sinh       as      ts
+
+brentq_tol = 1e-20
+ts_tol     = 1e-12
 
 
 def gtrapz(xi,xj,fi,fj,hi,hj):
@@ -48,7 +52,7 @@ def find_zeros(f,x,is_func=False):
         c = f(x)
         indi = np.where(c[1:]*c[0:-1] < 0.0)[0]
         for i in indi:
-            u = brentq(f, x[i], x[i+1])
+            u = brentq(f, x[i], x[i+1],xtol=brentq_tol)
             z = f(u)
             index_list.append(i)
             roots_list.append(u)
@@ -95,7 +99,7 @@ def check_first_well(f,x,index,is_func=False):
     return ans
 
 
-def bounce_integral(f,h,x,index,root,is_func=False):
+def bounce_integral(f,h,x,index,root,is_func=False,sinhtanh=False):
     r"""
     ``bounce_integral`` does the bounce integral
     .. math::
@@ -103,13 +107,16 @@ def bounce_integral(f,h,x,index,root,is_func=False):
     Can be done by either quad if is_func=True, or
     gtrapz if is_func=False. When is_func=True 
     both f and h need to be functions. Otherwise
-    they should be arrays.
+    they should be arrays. sinhtanh can furthermore
+    be set to either True of False to use sinhtanh
+    quadrature methods (only is is_func=True).
      Args:
         f: function or arrays containing f
         h: function or arrays containing h
         index: indices left of the roots
         root: the values where f(x)=0
-        is_func: are h and f functions or not.
+        is_func: are h and f functions or arrays.
+        sinhtanh: use sinhtanh quadrature methods.
     """
     # define number of bounce wells
     num_wells = int(len(root)/2)
@@ -119,21 +126,63 @@ def bounce_integral(f,h,x,index,root,is_func=False):
 
     # do integral with quadrature methods
     if is_func==True:
-        # make x xoordinate periodic
+        # x coordinate for periodic boundary condition
         xmin = x[0]
         xmax = x[-1]
-        # integrand
-        integrand = lambda x : h(x)/np.sqrt(np.abs(f(x)))
-        for well_idx in range(num_wells):
-            l_bound  = root[2*well_idx]
-            r_bound = root[2*well_idx+1]
-            if l_bound > r_bound:
-                val_left, err   = quad(integrand,l_bound,xmax)    
-                val_right, err  = quad(integrand,xmin,r_bound)
-                val = val_left + val_right
-            if l_bound < r_bound:
-                val, err  = quad(integrand,l_bound,r_bound)
-            bounce_val.append(val)
+        if sinhtanh==False:
+            # integrand
+            integrand = lambda x : h(x)/np.sqrt(np.abs(f(x)))
+            for well_idx in range(num_wells):
+                l_bound  = root[2*well_idx]
+                r_bound = root[2*well_idx+1]
+                if l_bound > r_bound:
+                    val_left, err   = quad(integrand,l_bound,xmax)    
+                    val_right, err  = quad(integrand,xmin,r_bound)
+                    val = val_left + val_right
+                if l_bound < r_bound:
+                    val, err  = quad(integrand,l_bound,r_bound)
+                bounce_val.append(val)
+        if sinhtanh==True:
+            # first construct the well
+            for well_idx in range(num_wells):
+                l_bound  = root[2*well_idx]
+                r_bound  = root[2*well_idx+1]
+                # sinh-tanh needs to evaluate extremely close to the root
+                # and as such the shrinking method is preferred.
+                l_bound += np.sqrt(brentq_tol)
+                r_bound -= np.sqrt(brentq_tol)
+                # normal integral routine
+                if l_bound < r_bound:
+                    # map interval [0,1]->[l_bound,r_bound]
+                    x_nrm     = lambda x: x * (r_bound - l_bound) + l_bound
+                    # construct integrand
+                    integrand_nrm = lambda x: h(x_nrm(x))/np.sqrt(np.abs(f(x_nrm(x))))
+                    # integrate
+                    val, _ = ts.integrate_lr(lambda x: integrand_nrm(x),
+                                             lambda x: integrand_nrm(1.0-x),
+                                             1.0,
+                                             ts_tol)
+                    val       = (val)*(r_bound - l_bound)
+                # routine for edge well
+                # NOT TESTED
+                if l_bound > r_bound:
+                    x_map     = lambda x: x * (xmax - l_bound) + l_bound
+                    integrand_nrm = lambda x: h(x_map(x))/np.sqrt(np.abs(f(x_map(x))))
+                    val, _ = ts.integrate_lr(lambda x: integrand_nrm(x),
+                                             lambda x: integrand_nrm(1.0-x),
+                                             1.0,
+                                             ts_tol)
+                    val_left       = val*(xmax - l_bound)
+                    x_map     = lambda x: x * (r_bound - xmin) + xmin
+                    integrand_nrm = lambda x: h(x_map(x))/np.sqrt(np.abs(f(x_map(x))))
+                    val, _ = ts.integrate_lr(lambda x: integrand_nrm(x),
+                                             lambda x: integrand_nrm(1.0-x),
+                                             1.0,
+                                             ts_tol)
+                    val_right       = val*(r_bound - xmin)
+                    val       = val_left + val_right
+                bounce_val.append(val)
+
     
     # do integral with gtrapz
     if is_func==False:
@@ -191,7 +240,7 @@ def bounce_integral(f,h,x,index,root,is_func=False):
     return bounce_val
 
 
-def bounce_integral_wrapper(f,h,x,is_func=False,return_roots=False):
+def bounce_integral_wrapper(f,h,x,is_func=False,return_roots=False,sinhtanh=False):
     r"""
     ``bounce_integral_wrapper`` does the bounce integral
     but wraps the root finding routine into one function.
@@ -214,7 +263,7 @@ def bounce_integral_wrapper(f,h,x,is_func=False,return_roots=False):
             index = np.roll(index,1)
             root = np.roll(root,1)
         # do bounce integral
-        bounce_val = bounce_integral(f,h,x,index,root,is_func=False)
+        bounce_val = bounce_integral(f,h,x,index,root,is_func=False,sinhtanh=False)
     # if is_func is true, use it for both root finding and integration
     if is_func==True: 
         index,root = find_zeros(f,x,is_func=True)
@@ -222,7 +271,7 @@ def bounce_integral_wrapper(f,h,x,is_func=False,return_roots=False):
         if first_well==False:
             index = np.roll(index,1)
             root = np.roll(root,1)
-        bounce_val = bounce_integral(f,h,x,index,root,is_func=True)
+        bounce_val = bounce_integral(f,h,x,index,root,is_func=True,sinhtanh=sinhtanh)
     if return_roots==False:
         return bounce_val
     if return_roots==True:
