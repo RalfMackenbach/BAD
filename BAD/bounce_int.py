@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+
+
 # This file contains all subroutines used in the calculation bounce-averaged drifts
 import  numpy           as      np
 from    scipy.optimize  import  brentq

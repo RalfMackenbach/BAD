@@ -1,6 +1,5 @@
 import sys
-sys.path.append('/Users/ralfmackenbach/Documents/GitHub/Bounce-averaged-drift/BAD/src/')  
-import mag_reader
+from BAD import mag_reader
 import bounce_int
 import numpy as np
 import time
