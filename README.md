@@ -6,6 +6,12 @@ This code contains three example cases of calculating the bounce-averaged drift,
 
 
 ### Use
+One can install the code by simply running 
+```
+pip install -e.
+```
+In the main directory.
+
 The main workhorse of this code is the `bounce_integral_wrapper(f,h,x,is_func=False,return_roots=False)` function, in the `bounce_int` module (found in `src`). This function solves integrals of the form:
 ```
 I=∫h(x)/sqrt(f(x)) dx
@@ -26,7 +32,7 @@ Given functions `f(x)` and `h(x)`, and an array `x_arr` integral can be evaluate
 ```
 I = bounce_int.bounce_integral_wrapper(f,h,x_arr,is_func=True,return_roots=False)
 ```
-The array `x_arr` is used for root-finding: the code looks for approximate locations of roots in the array `f_arr=f(x_arr)`, which are then refined using `brentq`. If there are roots on very small scales, one should take care to choose an appropriately well resolved `x_arr`.
+The array `x_arr` is used for root-finding: the code looks for approximate locations of roots in the array `f_arr=f(x_arr)`, which are then refined using `brentq`. If there are roots on very small scales, one should take care to choose an appropriately well resolved `x_arr`. One can also set a `kwarg` for sinh-tanh quadrature methods (`sinhtanh=True` or `False`), though this tends to be finicky (an `AssertionError` often pops up).
 
 
 ### Roots
@@ -42,4 +48,4 @@ Typically, `is_func=False` should be used in situations where speed is preferred
 
 The code is written to deal with periodic boundary conditions for the functions `f(x)` and `h(x)`. Such a boundary condition may be exceptionally poor for devices with high shear, as `h(x)=v_D.nabla_alpha` has a linear term. To use a quasi-linear boundary condition, it is recommended to simply extrapolate the domain to the next B_max so that the boundary condition is unimportant. An example of this is given in the CHM folder.
 
-If one wishes to calculate the bounce time, the binormal drift, and the radial drift in one go, it is best to construct a function that does so manually. This is because each call of `bounce_integral_wrapper(f,h,x)` calculates the roots again given the input. The roots don't change if one only varies `h(x)`, so one can best construct a new function which calculates the roots only once. Please construct a new function using `bounce_integral_wrapper(f,h,x,is_func=False,return_roots=False)` to do so - it would only require minor changes.
+If one wishes to calculate the bounce time, the binormal drift, and the radial drift in one go, it is best to construct a function that does so manually. This is because each call of `bounce_integral_wrapper(f,h,x)` calculates the roots again given the input. The roots don't change if one only varies `h(x)`, so one can best construct a new function which calculates the roots only once. Please construct a new function by consulting `bounce_integral_wrapper(f,h,x,is_func=False,return_roots=False)` to do so - it would only require minor changes.
