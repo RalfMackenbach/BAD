@@ -8,25 +8,25 @@ from scipy import interpolate as interp
 
 
 # we set numerical parameters here
-lam_res = 10000
+lam_res = 1000
 
 # constants
 a_minor     = 0.32263403803766705
 psi_edge    =-0.4970702058373358 / ( 2 * np.pi)
 flux_sign   =-1
 Bref        = 1.5200136651694336
-s_val       = 0.5
+s_val       = 0.5                       # psi/psi_tot = s_val
 
 # import all data from NCSX
 modB_SI        = np.load('modb.npy')
 modb = modB_SI/Bref
-grad_psi    = np.load('grad_psi.npy')
-curv_psi    = np.load('curv_psi.npy')
-grad_alpha  = np.load('grad_alpha.npy')
-curv_alpha  = np.load('curv_alpha.npy')
-jac         = np.load('jac.npy')
-theta       = np.load('theta.npy')
-dldtheta    = np.abs(modb/jac)
+grad_psi    = np.load('grad_psi.npy')   # B x nabla(|B|) . nabla(psi) / |B|^2
+curv_psi    = np.load('curv_psi.npy')   # B x kappa . nabla(psi) / |B|
+grad_alpha  =-np.load('grad_alpha.npy') # B x nabla(|B|) . nabla(alpha) / |B|^2
+curv_alpha  =-np.load('curv_alpha.npy') # B x kappa . nabla(alpha) / |B|
+jac         = np.load('jac.npy')        # nabla(psi) x nabla(alpha) . nabla(phi)
+theta       = np.load('theta.npy')      # theta, field line following coordinate 
+dldtheta    = np.abs(modb/jac)          # dl/dtheta, see manuscript
 
 
 # find maximal values 
@@ -60,6 +60,8 @@ boundary_list = []
 # gtrapz is good enough here
 
 
+roots_list = []
+
 # loop over all lambda values
 for idx, lam_val in enumerate(lam_arr):
     f = 1 - lam_val * modb
@@ -75,6 +77,7 @@ for idx, lam_val in enumerate(lam_arr):
         boundary_cross = roots[2*idx2] > roots[2*idx2+1]
         cross_per_lam.append(boundary_cross)
     # make into list of lists
+    roots_list.append(roots)
     boundary_list.append(np.asarray(cross_per_lam))
     gtrapz_arr_psi.append(np.asarray(num_arr_psi)/np.asarray(bounce_time))
     gtrapz_arr_alpha.append(np.asarray(num_arr_alpha)/np.asarray(bounce_time))
@@ -126,7 +129,7 @@ mask_centr[mask_centr == False] = np.nan
 mask_bound[mask_bound == False] = np.nan
 
 # make scatter plot
-fig, ax = plt.subplots(2, 1, tight_layout=True, figsize=(3.5, 5.0))
+fig, ax = plt.subplots(4, 1, tight_layout=True, figsize=(3.5, 4/3*2.5*2.5))
 ax[0].scatter(k2_alp,mask_bound*walp_arr,s=0.2,marker='.',color='black',label='g-trapz',facecolors='black')
 ax[0].scatter(k2_alp,mask_centr*walp_arr,s=0.2,marker='.',color='red',label='g-trapz',facecolors='red')
 ax[1].scatter(k2_psi,mask_bound*wpsi_arr,s=0.2,marker='.',color='black',label='g-trapz',facecolors='black')
@@ -137,6 +140,42 @@ ax[0].set_ylabel(r'$\langle \hat{\mathbf{v}}_D \cdot \nabla y \rangle$')
 ax[1].set_xlabel(r'$k^2$')
 ax[1].set_xlim(0,1)
 ax[1].set_ylabel(r'$\langle \hat{\mathbf{v}}_D \cdot \nabla r \rangle$')
+
+ # now do plot as a function of bounce-angle
+walpha_bounceplot = []
+roots_bounceplot  = []
+wpsi_bounceplot   = []
+for lam_idx, lam_val in enumerate(lam_arr):
+    root_at_lam = roots_list[lam_idx]
+    wpsi_at_lam = gtrapz_arr_psi[lam_idx]
+    walpha_at_lam= gtrapz_arr_alpha[lam_idx]
+    roots_bounceplot.extend(root_at_lam)
+    for idx in range(len(wpsi_at_lam)):
+        wpsi_bounceplot.extend([wpsi_at_lam[idx]])
+        wpsi_bounceplot.extend([wpsi_at_lam[idx]])
+        walpha_bounceplot.extend([walpha_at_lam[idx]])
+        walpha_bounceplot.extend([walpha_at_lam[idx]])
+
+    roots_ordered_new, wpsi_bounceplot_new = (list(t) for t in zip(*sorted(zip(roots_bounceplot, wpsi_bounceplot))))
+    roots_ordered_new, walpha_bounceplot_new = (list(t) for t in zip(*sorted(zip(roots_bounceplot, walpha_bounceplot))))
+
+
+ax[2].plot(theta/np.pi,Bref*modb,color='black')
+ax021=ax[2].twinx()
+ax021.plot(np.asarray(roots_ordered_new)/np.pi,np.asarray(walpha_bounceplot_new) * a_minor * dydalpha )
+ax[3].plot(theta/np.pi,Bref*modb,color='black')
+ax031=ax[3].twinx()
+ax031.plot(np.asarray(roots_ordered_new)/np.pi,np.asarray(wpsi_bounceplot_new) * drdpsi * a_minor )
+ax[2].set_xlim(theta.min()/np.pi,theta.max()/np.pi)
+ax[3].set_xlim(theta.min()/np.pi,theta.max()/np.pi)
+ax[2].set_xlabel(r'$\theta/\pi$')
+ax[3].set_xlabel(r'$\theta/\pi$')
+ax021.set_ylabel(r'$\langle \hat{\mathbf{v}}_D \cdot \nabla y \rangle$',color="tab:blue")
+ax[2].set_ylabel(r'$|B|$')
+ax[3].set_ylabel(r'$|B|$')
+ax031.set_ylabel(r'$\langle \hat{\mathbf{v}}_D \cdot \nabla r \rangle$',color="tab:blue")
+ax021.set_ylim(-0.2,0.6)
+ax031.set_ylim(-0.3,0.3)
 
 plt.savefig('precession_NCSX.eps',dpi=1000)
 plt.show()
