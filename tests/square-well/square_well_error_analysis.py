@@ -21,21 +21,21 @@ def bounce_time(lam_val,al=1.0):
 
 # analytical Delta alpha
 def delta_alpha(lam_val,al=1.0,apsi=1.5,b=1.0):
-    return np.pi * apsi * (lam_val + 2 * lam_val * b * al - 1) / ( 2 * al**1.5 * lam_val**0.5 )
+    return - np.pi * apsi * (lam_val + 2 * lam_val * b * al - 1) / ( 2 * al**1.5 * lam_val**0.5 )
 
 # analytical bounce averaged drift
 def drift(lam_val,al=1.0,apsi=1.5,b=1.0):
-    return apsi * ( 2 * b * al * lam_val + lam_val - 1.0 ) / ( 2 * al )
+    return - apsi * ( 2 * b * al * lam_val + lam_val - 1.0 ) / ( 2 * al )
 
 
 
 #
-lam_res = 9
+lam_res = 99
 
 
 
 # loop over res as well
-res = np.rint(np.logspace(1,6,6,endpoint=True)).astype(int)+1
+res = np.rint(np.logspace(1,6,6,endpoint=True)).astype(int)
 print(res)
 gtrapz_err = np.zeros(len(res))
 quad_err = np.zeros(len(res))
@@ -67,7 +67,7 @@ for res_idx, res_val in enumerate(res):
     for idx, lam_val in enumerate(lam_arr):
         f = 1.0 - lam_val*modb_arr
         tau_b   = bounce_int.bounce_integral_wrapper(f,dldl,l_arr,is_func=False)
-        d_alpha = bounce_int.bounce_integral_wrapper(f,-1.0*lam_val*dbdpsi_arr,l_arr,is_func=False)
+        d_alpha = bounce_int.bounce_integral_wrapper(f,lam_val*dbdpsi_arr,l_arr,is_func=False)
         gtrapz_den[idx] = tau_b[0]
         gtrapz_num[idx] = d_alpha[0]
         gtrapz_ave[idx] = d_alpha[0]/tau_b[0]
@@ -103,7 +103,7 @@ for res_idx, res_val in enumerate(res):
     start_time = time.time()
     for idx, lam_val in enumerate(lam_arr):
         f = lambda x: 1.0 - lam_val*modb_interp(x)
-        h_alpha = lambda x: -1.0 * lam_val * dldldbdpsi_interp(x)
+        h_alpha = lambda x: lam_val * dldldbdpsi_interp(x)
         tau_b   = bounce_int.bounce_integral_wrapper(f,dldl_interp,l_arr,is_func=True)
         d_alpha = bounce_int.bounce_integral_wrapper(f,h_alpha,l_arr,is_func=True)
         quad_den[idx] = tau_b[0]
@@ -141,7 +141,7 @@ for res_idx, res_val in enumerate(res):
     start_time = time.time()
     for idx, lam_val in enumerate(lam_arr):
         f = lambda x: 1.0 - lam_val*modb_interp(x)
-        h_alpha = lambda x: -1.0 * lam_val * dldldbdpsi_interp(x)
+        h_alpha = lambda x: lam_val * dldldbdpsi_interp(x)
         tau_b   = bounce_int.bounce_integral_wrapper(f,dldl_interp,l_arr,is_func=True)
         d_alpha = bounce_int.bounce_integral_wrapper(f,h_alpha,l_arr,is_func=True)
         cquad_den[idx] = tau_b[0]

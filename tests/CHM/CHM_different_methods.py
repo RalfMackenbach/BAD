@@ -1,5 +1,6 @@
 import sys
-from BAD import bounce_int, mag_reader
+from BAD import bounce_int
+from BAD import mag_reader
 import numpy as np
 import time
 import scipy.interpolate as interp
@@ -15,7 +16,7 @@ def CHM_analytical(k2,s,alpha,q):
     G1 = ellipe/ellipk - 0.5
     G2 = ellipe/ellipk + k2 - 1
     G3 = 2/3 * ( ellipe/ellipk * (2 * k2 - 1) + 1 - k2 )
-    return G1 - alpha/(4 * q**2) + 2 * s * G2 - alpha * G3
+    return -1*(G1 - alpha/(4 * q**2) + 2 * s * G2 - alpha * G3)
 
 
 
@@ -49,7 +50,7 @@ K2_interp       = interp.interp1d(theta, L2 - my_dpdx/(2*modb), kind=kind)
 # now calculate for various lambda
 for idx, lam_val in enumerate(lam_arr):
     f = lambda x: 1.0 - lam_val*modb_interp(x)
-    delta_alpha = lambda x: -1.0 * (lam_val * L2_interp(x) + 2 * (1/modb_interp(x) - lam_val) * K2_interp(x)) * dldtheta_interp(x)
+    delta_alpha = lambda x: (lam_val * L2_interp(x) + 2 * (1/modb_interp(x) - lam_val) * K2_interp(x)) * dldtheta_interp(x)
     tau_b   = bounce_int.bounce_integral_wrapper(f,dldtheta_interp,theta,is_func=True)
     d_alpha = bounce_int.bounce_integral_wrapper(f,delta_alpha,theta,is_func=True)
     cquad_den.append(np.asarray(tau_b))
@@ -81,7 +82,7 @@ K2_interp       = interp.interp1d(theta, L2 - my_dpdx/(2*modb), kind=kind)
 # now calculate for various lambda
 for idx, lam_val in enumerate(lam_arr):
     f = lambda x: 1.0 - lam_val*modb_interp(x)
-    delta_alpha = lambda x: -1.0 * (lam_val * L2_interp(x) + 2 * (1/modb_interp(x) - lam_val) * K2_interp(x)) * dldtheta_interp(x)
+    delta_alpha = lambda x: (lam_val * L2_interp(x) + 2 * (1/modb_interp(x) - lam_val) * K2_interp(x)) * dldtheta_interp(x)
     tau_b   = bounce_int.bounce_integral_wrapper(f,dldtheta_interp,theta,is_func=True)
     d_alpha = bounce_int.bounce_integral_wrapper(f,delta_alpha,theta,is_func=True)
     cquad2_den.append(np.asarray(tau_b))
@@ -141,7 +142,7 @@ ax[2].plot(k2,CHM_res,linestyle='dotted',color='black',label='CHM')
 ax[2].set_xlabel(r'$k^2$')
 ax[2].set_xlim(0,1)
 ax[2].set_ylabel(r'$ \langle \mathbf{v}_D \cdot \nabla \alpha \rangle \quad \left[ \frac{H}{q a^2 B_0} \right]$')
-ax[2].legend()
+ax[2].legend(loc='lower left')
 
 ## import data from joey
 df = pd.read_table("CHMs7a5_mulitple_methods.dat", sep="\s+")
@@ -151,13 +152,13 @@ djdpsi  = 2*joey_dat[:,2]
 CHM     = 2*joey_dat[:,4]
 
 
-ax[3].plot(k2,djdpsi,label='CW')
-ax[3].plot(k2,djdpsi,label='EW',linestyle='dashed')
-ax[3].plot(k2,CHM,linestyle='dotted',color='black',label='CHM')
+ax[3].plot(k2,-djdpsi,label='CW')
+ax[3].plot(k2,-djdpsi,label='EW',linestyle='dashed')
+ax[3].plot(k2,-CHM,linestyle='dotted',color='black',label='CHM')
 ax[3].set_xlabel(r'$k^2$')
 ax[3].set_xlim(0,1)
 ax[3].set_ylabel(r'$\langle \mathbf{v}_D \cdot \nabla \alpha \rangle \quad \left[ \frac{H}{q a^2 B_0} \right]$')
-ax[3].legend()
+ax[3].legend(loc='lower left')
 ax[0].set_aspect('auto')
 ax[1].set_aspect('auto')
 ax[2].set_aspect('auto')
@@ -182,6 +183,6 @@ ax[0].text(theta_val,modb_val,r'(a)',   ha='center',va='center')
 ax[1].text(k_val,w_val,r'(b)',          ha='center',va='center')
 ax[2].text(1-k_val,w2_val,r'(c)',         ha='center',va='center')
 ax[3].text(1-k_val,w2_val,r'(d)',         ha='center',va='center')
-plt.savefig('CHM_comparison.eps')
+plt.savefig('CHM_comparison.eps',dpi=1000)
 
 plt.show()

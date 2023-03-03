@@ -132,6 +132,7 @@ mask_bound[mask_bound == False] = np.nan
 fig, ax = plt.subplots(4, 1, tight_layout=True, figsize=(3.5, 4/3*2.5*2.5))
 ax[0].scatter(k2_alp,mask_bound*walp_arr,s=0.2,marker='.',color='black',label='g-trapz',facecolors='black')
 ax[0].scatter(k2_alp,mask_centr*walp_arr,s=0.2,marker='.',color='red',label='g-trapz',facecolors='red')
+ax[0].plot(k2_arr,0*k2_arr,linestyle='dashed',color='red')
 ax[1].scatter(k2_psi,mask_bound*wpsi_arr,s=0.2,marker='.',color='black',label='g-trapz',facecolors='black')
 ax[1].scatter(k2_psi,mask_centr*wpsi_arr,s=0.2,marker='.',color='red',label='g-trapz',facecolors='red')
 ax[0].set_xlabel(r'$k^2$')
@@ -174,6 +175,7 @@ ax021.set_ylabel(r'$\langle \hat{\mathbf{v}}_D \cdot \nabla y \rangle$',color="t
 ax[2].set_ylabel(r'$|B|$')
 ax[3].set_ylabel(r'$|B|$')
 ax031.set_ylabel(r'$\langle \hat{\mathbf{v}}_D \cdot \nabla r \rangle$',color="tab:blue")
+ax021.plot(theta/np.pi,0.0*Bref*modb,color='red',linestyle='dashed')
 ax021.set_ylim(-0.2,0.6)
 ax031.set_ylim(-0.3,0.3)
 
