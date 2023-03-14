@@ -10,7 +10,7 @@ One can install the code by simply running
 ```
 pip install -e.
 ```
-In the main directory.
+in the main directory.
 
 The main workhorse of this code is the `bounce_integral_wrapper(f,h,x,is_func=False,return_roots=False)` function, in the `bounce_int` module (found in `src`). This function solves integrals of the form:
 ```
@@ -38,7 +38,7 @@ The array `x_arr` is used for root-finding: the code looks for approximate locat
 ### Roots
 If one wishes to return the locations of the roots of `f(x)` or `f_arr` as well, one can do so by setting
 ```
-I, roots = bounce_int.bounce_integral_wrapper(f_arr,h_arr,x_arr,is_func=False,return_roots=False)
+I, roots = bounce_int.bounce_integral_wrapper(f_arr,h_arr,x_arr,is_func=False,return_roots=True)
 ```
 The roots are returned in an array, where each consecutive pair belongs to one region of `f(x)>0`.
 
