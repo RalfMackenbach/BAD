@@ -5,10 +5,9 @@
 import  numpy           as      np
 from    scipy.optimize  import  brentq
 from    scipy.integrate import  quad
-import  tanh_sinh       as      ts
 
 brentq_tol = 1e-20
-ts_tol     = 1e-12
+ts_tol     = 1e-6
 
 
 def _gtrapz(xi,xj,fi,fj,hi,hj):
@@ -25,9 +24,9 @@ def _gtrapz(xi,xj,fi,fj,hi,hj):
         hi: array containing left points of h(x)
         hj: array containing right points of h(x)
     """
-    # include limit 
+    # include limit case where fi=fj
     ans = np.asarray(1/2 * (xj - xi) * (hi + hj)/ np.sqrt(1/2*(fi+fj)))
-    # do operations
+    # do division, keeping limit whenever fi=fj
     ans = np.divide( 2 * (xj - xi) * (hj * np.sqrt(fj) - hi * np.sqrt(fi))*(fj-fi) - 4/3 * (xj - xi) * (hj - hi) * (np.power(fj,3/2)- np.power(fi,3/2)), np.square(fj-fi),
                     out=ans,where=fi!=fj)       
     return np.sum(ans)
@@ -150,6 +149,7 @@ def _bounce_integral(f,h,x,index,root,is_func=False,sinhtanh=False):
                     val, err  = quad(integrand,l_bound,r_bound)
                 bounce_val.append(val)
         if sinhtanh==True:
+            import  tanh_sinh       as      ts
             # first construct the well
             for well_idx in range(num_wells):
                 l_bound  = root[2*well_idx]
@@ -173,20 +173,26 @@ def _bounce_integral(f,h,x,index,root,is_func=False,sinhtanh=False):
                 # routine for edge well
                 # NOT TESTED
                 if l_bound > r_bound:
-                    x_map     = lambda x: x * (xmax - l_bound) + l_bound
-                    integrand_nrm = lambda x: h(x_map(x))/np.sqrt(np.abs(f(x_map(x))))
-                    val, _ = ts.integrate_lr(lambda x: integrand_nrm(x),
-                                             lambda x: integrand_nrm(1.0-x),
-                                             1.0,
-                                             ts_tol)
-                    val_left       = val*(xmax - l_bound)
-                    x_map     = lambda x: x * (r_bound - xmin) + xmin
-                    integrand_nrm = lambda x: h(x_map(x))/np.sqrt(np.abs(f(x_map(x))))
-                    val, _ = ts.integrate_lr(lambda x: integrand_nrm(x),
-                                             lambda x: integrand_nrm(1.0-x),
-                                             1.0,
-                                             ts_tol)
-                    val_right       = val*(r_bound - xmin)
+                    # map interval [0,1]->[l_bound,xmax]
+                    x_nrm     = lambda x: x * (xmax - l_bound) + l_bound
+                    # construct integrand, full function for debugging 
+                    # purposes
+                    def integrand(x):
+                        val = h(x)/np.sqrt(np.abs(f(x)))
+                        #print(val)
+                        return val
+                    # integrate
+                    val_left, _ = ts.integrate_lr(lambda x: integrand(x_nrm(x)),
+                                                  lambda x: integrand(1.0-x_nrm(x)),
+                                                  1.0,
+                                                  ts_tol)
+                    val_left       = (val_left)*(xmax - l_bound)
+                    x_nrm     = lambda x: x * (r_bound - xmin) + xmin
+                    val_right, _ = ts.integrate_lr(lambda x: integrand_nrm(x),
+                                                  lambda x: integrand_nrm(1.0-x),
+                                                  1.0,
+                                                  ts_tol)
+                    val_right       = val_right*(r_bound - xmin)
                     val       = val_left + val_right
                 bounce_val.append(val)
 

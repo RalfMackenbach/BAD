@@ -119,7 +119,7 @@ modb    = data.modb
 sqrtg   = data.sqrtg
 theta   = data.theta
 my_dpdx = data.my_dpdx
-fig, ax = plt.subplots(4, 1, tight_layout=True, figsize=(3.5, 4/3*2.5*2.5))
+fig, ax = plt.subplots(3, 1, tight_layout=True, figsize=(3.5, 2.5*2.5))
 ax[0].plot(theta/np.pi,modb,color='black')
 twinax0 = ax[0].twinx()
 ax[0].set_xlabel(r'$\theta/\pi$')
@@ -129,20 +129,20 @@ twinax0.plot(theta/np.pi,L2,color='tab:blue')
 twinax0.plot(theta/np.pi,0.0*L2,color='red',linestyle='dashed')
 twinax0.set_ylim(-L2.max(), 1.1*L2.max())
 ax[0].set_xlim(-data.n_pol,data.n_pol)
-ax[1].plot(k2,cquad_ave[:,1],label='CW')
-ax[1].plot(k2,cquad_ave[:,0],label='EW',linestyle='dashed')
+# ax[1].plot(k2,cquad_ave[:,1],label='CW')
+# ax[1].plot(k2,cquad_ave[:,0],label='EW',linestyle='dashed')
+# ax[1].plot(k2,CHM_res,linestyle='dotted',color='black',label='CHM')
+# ax[1].set_xlabel(r'$k^2$')
+# ax[1].set_xlim(0,1)
+# ax[1].set_ylabel(r'$ \langle \mathbf{v}_D \cdot \nabla \alpha \rangle \quad \left[ \frac{H}{q a^2 B_0} \right]$')
+# ax[1].legend()
+ax[1].plot(k2,cquad2_ave[:,1],label='CW')
+ax[1].plot(k2,cquad2_ave[:,2],label='EW',linestyle='dashed')
 ax[1].plot(k2,CHM_res,linestyle='dotted',color='black',label='CHM')
 ax[1].set_xlabel(r'$k^2$')
 ax[1].set_xlim(0,1)
 ax[1].set_ylabel(r'$ \langle \mathbf{v}_D \cdot \nabla \alpha \rangle \quad \left[ \frac{H}{q a^2 B_0} \right]$')
-ax[1].legend()
-ax[2].plot(k2,cquad2_ave[:,1],label='CW')
-ax[2].plot(k2,cquad2_ave[:,2],label='EW',linestyle='dashed')
-ax[2].plot(k2,CHM_res,linestyle='dotted',color='black',label='CHM')
-ax[2].set_xlabel(r'$k^2$')
-ax[2].set_xlim(0,1)
-ax[2].set_ylabel(r'$ \langle \mathbf{v}_D \cdot \nabla \alpha \rangle \quad \left[ \frac{H}{q a^2 B_0} \right]$')
-ax[2].legend(loc='lower left')
+ax[1].legend(loc='lower left')
 
 ## import data from joey
 df = pd.read_table("CHMs7a5_mulitple_methods.dat", sep="\s+")
@@ -152,17 +152,17 @@ djdpsi  = 2*joey_dat[:,2]
 CHM     = 2*joey_dat[:,4]
 
 
-ax[3].plot(k2,-djdpsi,label='CW')
-ax[3].plot(k2,-djdpsi,label='EW',linestyle='dashed')
-ax[3].plot(k2,-CHM,linestyle='dotted',color='black',label='CHM')
-ax[3].set_xlabel(r'$k^2$')
-ax[3].set_xlim(0,1)
-ax[3].set_ylabel(r'$\langle \mathbf{v}_D \cdot \nabla \alpha \rangle \quad \left[ \frac{H}{q a^2 B_0} \right]$')
-ax[3].legend(loc='lower left')
-ax[0].set_aspect('auto')
-ax[1].set_aspect('auto')
+ax[2].plot(k2,-djdpsi,label='CW')
+ax[2].plot(k2,-djdpsi,label='EW',linestyle='dashed')
+ax[2].plot(k2,-CHM,linestyle='dotted',color='black',label='CHM')
+ax[2].set_xlabel(r'$k^2$')
+ax[2].set_xlim(0,1)
+ax[2].set_ylabel(r'$\langle \mathbf{v}_D \cdot \nabla \alpha \rangle \quad \left[ \frac{H}{q a^2 B_0} \right]$')
+ax[2].legend(loc='lower left')
 ax[2].set_aspect('auto')
-ax[3].set_aspect('auto')
+ax[2].set_aspect('auto')
+ax[2].set_aspect('auto')
+ax[2].set_aspect('auto')
 
 
 x_text = 0.1
@@ -180,9 +180,9 @@ w2_val      = djdpsi.min() + w_range2*y_text
 
 
 ax[0].text(theta_val,modb_val,r'(a)',   ha='center',va='center')
-ax[1].text(k_val,w_val,r'(b)',          ha='center',va='center')
+# ax[1].text(k_val,w_val,r'(b)',          ha='center',va='center')
+ax[1].text(1-k_val,w2_val,r'(b)',         ha='center',va='center')
 ax[2].text(1-k_val,w2_val,r'(c)',         ha='center',va='center')
-ax[3].text(1-k_val,w2_val,r'(d)',         ha='center',va='center')
 plt.savefig('CHM_comparison.eps',dpi=1000)
 
 plt.show()
