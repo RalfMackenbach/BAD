@@ -24,15 +24,14 @@ grad_psi    = np.load('grad_psi.npy')   # B x nabla(|B|) . nabla(psi) / |B|^2
 curv_psi    = np.load('curv_psi.npy')   # B x kappa . nabla(psi) / |B|
 grad_alpha  =-np.load('grad_alpha.npy') # B x nabla(|B|) . nabla(alpha) / |B|^2
 curv_alpha  =-np.load('curv_alpha.npy') # B x kappa . nabla(alpha) / |B|
-jac         = np.load('jac.npy')        # nabla(psi) x nabla(alpha) . nabla(phi)
 theta       = np.load('theta.npy')      # theta, field line following coordinate 
-dldtheta    = np.abs(modb/jac)          # dl/dtheta, see manuscript
+dldtheta    = np.load('dldtheta.npy')          # dl/dtheta, see manuscript
 
 
 # find maximal values 
 max_idx = np.asarray(np.argwhere(modb == np.amax(modb))).flatten()
 l_max   = max_idx[0]
-r_max   = max_idx[-1]
+r_max   = max_idx[-1]+1
 
 # adjust all arrays
 modb        = modb[l_max:r_max]
@@ -40,14 +39,12 @@ grad_psi    = grad_psi[l_max:r_max]
 curv_psi    = curv_psi[l_max:r_max]
 grad_alpha  = grad_alpha[l_max:r_max]
 curv_alpha  = curv_alpha[l_max:r_max]
-jac         = jac[l_max:r_max]
 theta       = theta[l_max:r_max]
 dldtheta    = dldtheta[l_max:r_max]
 
 rho = np.sqrt(s_val)
 drdpsi      = a_minor/(2* np.sqrt(s_val) * psi_edge)
 dydalpha    = a_minor * np.sqrt(s_val)
-
 
 # make lambda array
 lam_arr     = np.linspace(1/modb.max(),1/modb.min(),lam_res,endpoint=False)
