@@ -30,9 +30,9 @@ This mode assumes that the functions f_arr and h_arr are well approximated by pi
 ### Method 2: quad
 Given functions `f(x)` and `h(x)`, and an array `x_arr` integral can be evaluated with quadrature methods using
 ```
-I = bounce_int.bounce_integral_wrapper(f,h,x_arr,is_func=True,return_roots=False)
+I = bounce_int.bounce_integral_wrapper(f,h,x_arr,is_func=False,return_roots=False)
 ```
-The array `x_arr` is used for root-finding: the code looks for approximate locations of roots in the array `f_arr=f(x_arr)`, which are then refined using `brentq`. If there are roots on very small scales, one should take care to choose an appropriately well resolved `x_arr`. One can also set a `kwarg` for sinh-tanh quadrature methods (`sinhtanh=True` or `False`), though this tends to be finicky (an `AssertionError` often pops up).
+The array `x_arr` is used for root-finding: the code looks for approximate locations of roots in the array `f_arr=f(x_arr)`, which are then refined using `brentq`. If there are roots on very small scales, one should take care to choose an appropriately well resolved `x_arr`. One can also set a `kwarg` for sinh-tanh quadrature methods (`sinhtanh=True` or `False`), though this tends to be finicky (an `AssertionError` often pops up). Finally, 
 
 
 ### Roots
@@ -49,3 +49,5 @@ Typically, `is_func=False` should be used in situations where speed is preferred
 The code is written to deal with periodic boundary conditions for the functions `f(x)` and `h(x)`. Such a boundary condition may be exceptionally poor for devices with high shear, as `h(x)=v_D.nabla_alpha` has a linear term. To use a quasi-linear boundary condition, it is recommended to simply extrapolate the domain to the next B_max so that the boundary condition is unimportant. An example of this is given in the CHM folder.
 
 If one wishes to calculate the bounce time, the binormal drift, and the radial drift in one go, it is best to construct a function that does so manually. This is because each call of `bounce_integral_wrapper(f,h,x)` calculates the roots again given the input. The roots don't change if one only varies `h(x)`, so one can best construct a new function which calculates the roots only once. Please construct a new function by consulting `bounce_integral_wrapper(f,h,x,is_func=False,return_roots=False)` to do so - it would only require minor changes.
+
+One needs to take care in non-omnigenous systems, as there may be wells which have only one bounce point. There is no clear way to handle such errors (as the true drift can not be reconstructed). The code handles it in two ways: it either raises an error if it encounters an odd number of bounce-points, or you can set the kwarg `ignore_odd=True`, so that it instead returns an empty list. This kwarg is included in `bounce_integral_wrapper`, see the code for if one wishes to make their own implementation.
