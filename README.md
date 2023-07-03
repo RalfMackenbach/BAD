@@ -12,7 +12,7 @@ pip install -e.
 ```
 in the main directory.
 
-The main workhorse of this code is the `bounce_integral_wrapper(f,h,x,is_func=False,return_roots=False)` function, in the `bounce_int` module (found in `src`). This function solves integrals of the form:
+The main workhorse of this code is the `bounce_integral_wrapper(f,h,x,is_func=False,return_roots=False)` function, in the `bounce_int` module (found in `BAD`). This function solves integrals of the form:
 ```
 I=∫h(x)/sqrt(f(x)) dx
 ```
