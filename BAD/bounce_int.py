@@ -76,9 +76,9 @@ def _find_zeros(f,x,is_func=False,ignore_odd=False):
     # check if total number of roots is even.
     # edge cases with odd number of roots have NOT been implemented
     if len(roots_list) % 2 == 1:
-        if ignore_odd==True:
-            raise Exception("Odd number of bounce points, please adjust resolution or interpolation method.")
         if ignore_odd==False:
+            raise Exception("Odd number of bounce points, please adjust resolution or interpolation method.")
+        if ignore_odd==True:
             print("Odd number of bounce points. Empty list returned.")
 
     # return all roots
