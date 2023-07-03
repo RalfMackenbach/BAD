@@ -10,6 +10,7 @@ brentq_tol = 1e-20
 ts_tol     = 1e-6
 
 
+
 def _gtrapz(xi,xj,fi,fj,hi,hj):
     r"""
     ``gtrapz`` estimates integrals of the form
@@ -32,7 +33,7 @@ def _gtrapz(xi,xj,fi,fj,hi,hj):
     return np.sum(ans)
 
 
-def _find_zeros(f,x,is_func=False):
+def _find_zeros(f,x,is_func=False,ignore_odd=False):
     r"""
     ``find_zeros`` finds the zeros of either a function f(x) or an array f.
     x is an array with the points on which f is evaluated for the root finding,
@@ -47,6 +48,8 @@ def _find_zeros(f,x,is_func=False):
             finding sign flips. if is_func is false, these
             are simply the locations of the samples f.
         is_func:    if f is a function set to True, normal set to False
+        ignore_odd: if False, an odd number of roots will raise an exception,
+                    if True, an odd number of roots will return an empty list.
                     
     """
     # we store the roots in a list, as we don't know a priori how many there will be.
@@ -73,7 +76,10 @@ def _find_zeros(f,x,is_func=False):
     # check if total number of roots is even.
     # edge cases with odd number of roots have NOT been implemented
     if len(roots_list) % 2 == 1:
-        raise Exception("Odd number of bounce points, please adjust resolution or interpolation method.")
+        if ignore_odd==True:
+            raise Exception("Odd number of bounce points, please adjust resolution or interpolation method.")
+        if ignore_odd==False:
+            print("Odd number of bounce points. Empty list returned.")
 
     # return all roots
     return index_list, roots_list
@@ -253,7 +259,7 @@ def _bounce_integral(f,h,x,index,root,is_func=False,sinhtanh=False):
     return bounce_val
 
 
-def bounce_integral_wrapper(f,h,x,is_func=False,return_roots=False,sinhtanh=False):
+def bounce_integral_wrapper(f,h,x,is_func=False,return_roots=False,sinhtanh=False,ignore_odd=False):
     r"""
     ``bounce_integral_wrapper`` does the bounce integral
     but wraps the root finding routine into one function.
@@ -269,7 +275,7 @@ def bounce_integral_wrapper(f,h,x,is_func=False,return_roots=False,sinhtanh=Fals
     # if f is not a function use gtrapz
     if is_func==False:
         # if false use array for root finding
-        index,root = _find_zeros(f,x,is_func=False)
+        index,root = _find_zeros(f,x,is_func=False,ignore_odd=ignore_odd)
         # check if first well is edge, if so roll
         first_well = _check_first_well(f,x,index,is_func=False)
         if first_well==False:
@@ -279,12 +285,12 @@ def bounce_integral_wrapper(f,h,x,is_func=False,return_roots=False,sinhtanh=Fals
         bounce_val = _bounce_integral(f,h,x,index,root,is_func=False,sinhtanh=False)
     # if is_func is true, use it for both root finding and integration
     if is_func==True: 
-        index,root = _find_zeros(f,x,is_func=True)
-        first_well = _check_first_well(f,x,index,is_func=True)
+        index,root = _find_zeros(f,x,is_func=True,ignore_odd=ignore_odd)
+        first_well = _check_first_well(f,x,index,is_func=True,)
         if first_well==False:
             index = np.roll(index,1)
             root = np.roll(root,1)
-        bounce_val = _bounce_integral(f,h,x,index,root,is_func=True,sinhtanh=sinhtanh)
+        bounce_val = _bounce_integral(f,h,x,index,root,is_func=True)
     if return_roots==False:
         return bounce_val
     if return_roots==True:
