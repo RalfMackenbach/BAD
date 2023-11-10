@@ -9,6 +9,8 @@ from    scipy.integrate import  quad
 brentq_tol = 1e-20
 ts_tol     = 1e-6
 
+weight_string = None
+wvar_tuple  = None
 
 
 def _gtrapz(xi,xj,fi,fj,hi,hj):
@@ -143,17 +145,18 @@ def _bounce_integral(f,h,x,index,root,is_func=False,sinhtanh=False):
         xmax = x[-1]
         if sinhtanh==False:
             # integrand
-            integrand = lambda x : h(x)/np.sqrt(np.abs(f(x)))
+            integrand = lambda x : h(x)/np.sqrt(np.abs(f(x))) 
             for well_idx in range(num_wells):
                 l_bound  = root[2*well_idx]
                 r_bound = root[2*well_idx+1]
                 if l_bound > r_bound:
-                    val_left, err   = quad(integrand,l_bound,xmax)    
-                    val_right, err  = quad(integrand,xmin,r_bound)
+                    val_left, err   = quad(integrand,l_bound,xmax,weight=weight_string, wvar=wvar_tuple)    
+                    val_right, err  = quad(integrand,xmin,r_bound,weight=weight_string, wvar=wvar_tuple)
                     val = val_left + val_right
                 if l_bound < r_bound:
-                    val, err  = quad(integrand,l_bound,r_bound)
+                    val, err  = quad(integrand,l_bound,r_bound,weight=weight_string, wvar=wvar_tuple)
                 bounce_val.append(val)
+                
         if sinhtanh==True:
             import  tanh_sinh       as      ts
             # first construct the well
@@ -281,16 +284,92 @@ def bounce_integral_wrapper(f,h,x,is_func=False,return_roots=False,sinhtanh=Fals
         if first_well==False:
             index = np.roll(index,1)
             root = np.roll(root,1)
+            print("Warning: first well is edge well, rolling array.")
         # do bounce integral
         bounce_val = _bounce_integral(f,h,x,index,root,is_func=False,sinhtanh=False)
     # if is_func is true, use it for both root finding and integration
     if is_func==True: 
         index,root = _find_zeros(f,x,is_func=True,ignore_odd=ignore_odd)
-        first_well = _check_first_well(f,x,index,is_func=True,)
+        first_well = _check_first_well(f,x,index,is_func=True)
         if first_well==False:
             index = np.roll(index,1)
             root = np.roll(root,1)
+            print("Warning: first well is edge well, rolling array.")
         bounce_val = _bounce_integral(f,h,x,index,root,is_func=True)
+    if return_roots==False:
+        return bounce_val
+    if return_roots==True:
+        return bounce_val, root
+    
+
+
+def bounce_integral_wrapper_safe(f,h,x,is_func=False,return_roots=False,sinhtanh=False):
+    r"""
+    ``bounce_integral_wrapper_safe`` does the bounce int,
+    but wraps the root finding routine into one function.
+    Can be done by either quad if is_func=True, or
+    gtrapz if is_func=False. When is_func=True 
+    both f and h need to be functions. Otherwise
+    they should be arrays.
+    _safe stands for the fact that it ignores wells 
+    having an odd number of roots, and wells that 
+    are edge wells.
+     Args:
+        f: function or arrays containing f
+        h: function or arrays containing h
+        is_func: are h and f functions or not.
+    """
+    # if f is not a function use gtrapz
+    if is_func==False:
+        # if false use array for root finding
+        index,root = _find_zeros(f,x,is_func=False)
+        # next check if the wells are ascending or descending at root locations.
+        # make list with boolean values accompanying the roots index
+        # True if ascending, False if descending
+        sgn_list = []
+        for i in index:
+            if f[i+1] > f[i]:
+                sgn_list.append(True)
+            if f[i+1] < f[i]:
+                sgn_list.append(False)
+        # now do integrals over all True-False pairs (False-True pairs are NOT allowed)
+        # First find indices of True-False pairs
+        tf_idx = []
+        for i in range(len(sgn_list)-1):
+            if sgn_list[i]==True and sgn_list[i+1]==False:
+                tf_idx.append(i)
+                tf_idx.append(i+1)
+        # Only retain the True False pairs in the index and root list
+        index = [index[i] for i in tf_idx]
+        root  = [root[i] for i in tf_idx]
+        # now do bounce integral
+        bounce_val = _bounce_integral(f,h,x,index,root,is_func=False,sinhtanh=False)
+    
+    # if is_func is true, use it for both root finding and integration
+    if is_func==True: 
+        index,root = _find_zeros(f,x,is_func=True)
+        # next check if the wells are ascending or descending at root locations.
+        # make list with boolean values accompanying the roots index
+        # True if ascending, False if descending
+        sgn_list = []
+        for i in index:
+            if f(x[i+1]) > f(x[i]):
+                sgn_list.append(True)
+            if f(x[i+1]) < f(x[i]):
+                sgn_list.append(False)
+        # now do integrals over all True-False pairs (False-True pairs are NOT allowed)
+        # First find indices of True-False pairs
+        tf_idx = []
+        for i in range(len(sgn_list)-1):
+            if sgn_list[i]==True and sgn_list[i+1]==False:
+                tf_idx.append(i)
+                tf_idx.append(i+1)
+        # Only retain the True False pairs in the index and root list
+        index = [index[i] for i in tf_idx]
+        root  = [root[i] for i in tf_idx]
+        # now do bounce integral
+        bounce_val = _bounce_integral(f,h,x,index,root,is_func=True)
+    
     if return_roots==False:
         return bounce_val
     if return_roots==True:

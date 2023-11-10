@@ -183,6 +183,6 @@ ax[0].text(theta_val,modb_val,r'(a)',   ha='center',va='center')
 # ax[1].text(k_val,w_val,r'(b)',          ha='center',va='center')
 ax[1].text(1-k_val,w2_val,r'(b)',         ha='center',va='center')
 ax[2].text(1-k_val,w2_val,r'(c)',         ha='center',va='center')
-plt.savefig('CHM_comparison.eps',dpi=1000)
+plt.savefig('CHM_comparison.png',dpi=1000)
 
 plt.show()

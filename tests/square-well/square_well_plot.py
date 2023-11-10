@@ -57,5 +57,5 @@ ax2.annotate('', xy=(0,0+pad), xytext=(0,-1.5-pad),
 ax2.text(0.3,-1.5/2,r'$b a_\psi$',ha='center',va='center',color='darkgreen')
 ax1.patch.set_visible(False)
 
-plt.savefig('square_well_plot.eps')
+plt.savefig('square_well_plot.png',dpi=1000)
 plt.show()

@@ -9,9 +9,7 @@ grad_psi    = np.load('grad_psi.npy')
 curv_psi    = np.load('curv_psi.npy')
 grad_alpha  = np.load('grad_alpha.npy')
 curv_alpha  = np.load('curv_alpha.npy')
-jac         = np.load('jac.npy')
 theta       = np.load('theta.npy')
-dldtheta    = np.abs(modb/jac)
 a_minor     = 0.32263403803766705
 psi_edge    =-0.4970702058373358
 flux_sign   =-1
@@ -56,5 +54,5 @@ ax1.set_zorder(1)
 ax2.set_ylabel(r'$\frac{\mathbf{B} \times \nabla B \cdot \nabla \alpha}{B^2} \quad [\mathrm{m}^{-2}]$',color='tab:blue')
 ax1.patch.set_visible(False)
 
-plt.savefig('modb_ncsx.eps')
+plt.savefig('modb_ncsx.png',dpi=1000)
 plt.show()

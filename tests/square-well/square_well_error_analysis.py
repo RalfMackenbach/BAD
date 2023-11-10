@@ -35,7 +35,7 @@ lam_res = 99
 
 
 # loop over res as well
-res = np.rint(np.logspace(1,6,6,endpoint=True)).astype(int)
+res = np.rint(np.logspace(1,5,5,endpoint=True)).astype(int)
 print(res)
 gtrapz_err = np.zeros(len(res))
 quad_err = np.zeros(len(res))
@@ -174,13 +174,13 @@ ax[0].loglog(res,10*gtrapz_err[-1]*(res[-1]/res)**1.5,color='black',linestyle='d
 ax[0].loglog(res,gtrapz_err,label='gtrapz')
 ax[0].loglog(res,quad_err,label='m-quad',linestyle='dashed')
 ax[0].loglog(res,cquad_err,label='c-quad',linestyle='dashdot')
-ax[0].set_ylabel(r'Error')
-ax[1].set_ylabel(r'Time')
+ax[0].set_ylabel(r'Relative error')
+ax[1].set_ylabel(r'Time [s]')
 ax[0].legend()
 ax[1].set_xlabel(r'$\hat{L}/\Delta \hat{\ell}$')
 ax[1].loglog(res,gtrapz_time,label='gtrapz')
 ax[1].loglog(res,quad_time,label='m-quad',linestyle='dashed')
 ax[1].loglog(res,cquad_time,label='c-quad',linestyle='dashdot')
-plt.savefig('error_square_well.eps')
+plt.savefig('error_square_well.png',dpi=1000)
 
 plt.show()
