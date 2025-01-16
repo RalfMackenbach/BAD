@@ -231,6 +231,151 @@ def sin_map(x, pass_t = False):
     t = 2/np.pi*np.arcsin(2*(x - x[0])/(x[-1] - x[0]) - 1)
     return t
 
+def _gquadz_definite(af,bf,cf,ah,bh,ch,xi,xj):
+    r"""
+    ``gquadz_definite`` is the definite integral of
+    .. math::
+       \int_{x_i}^{x_j} \frac{h(x)}{\sqrt{f(x)}} \mathrm{d}x
+    by assuming that 
+    .. math::
+        f(x) = af x^2 + bf x + cf
+        h(x) = ah x^2 + bh x + ch
+     Args:
+        af: coefficient of x^2 in f(x)
+        bf: coefficient of x in f(x)
+        cf: constant in f(x)
+        ah: coefficient of x^2 in h(x)
+        bh: coefficient of x in h(x)
+        ch: constant in h(x)
+        x:  x value at which the indefinite integral is evaluated
+    """
+    # allow complex numbers, double precision
+    af = np.complex_(af)
+    bf = np.complex_(bf)
+    cf = np.complex_(cf)
+    ah = np.complex_(ah)
+    bh = np.complex_(bh)
+    ch = np.complex_(ch)
+    xi = np.complex_(xi)
+    xj = np.complex_(xj)
+    
+
+    term_1 = -2*np.sqrt(af)*np.sqrt(cf + xi*(af*xi + bf)) + 2*af*xi + bf
+    arg_1 = np.angle(term_1)
+    term_2 = -2*np.sqrt(af)*np.sqrt(cf + xj*(af*xj + bf)) + 2*af*xj + bf
+    arg_2 = np.angle(term_2)
+    num_log = (-8*af**2*ch + 4*af*ah*cf + 4*af*bf*bh - 3*ah*bf**2)*(-1.j*(arg_1-arg_2)-np.log(np.abs(term_1))+ np.log(np.abs(term_2)))
+    log_terms = np.where(np.abs(af) < 1e-7, np.zeros(len(af)), num_log/(8*af**2.5))
+    
+    num_sqrt = (-(2*np.sqrt(af)*np.sqrt(cf + xi*(af*xi + bf))*(2*af*ah*xi + 4*af*bh - 3*ah*bf)) \
+         + (2*np.sqrt(af)*np.sqrt(cf + xj*(af*xj + bf))*(2*af*ah*xj + 4*af*bh - 3*ah*bf)))
+    alt = (16 *np.sqrt(cf + bf*xj)*(8*ah*cf**2 - 2*bf*cf*(5*bh + 2*ah*xj) + bf**2*(15*ch + xj*(5*bh + 3*ah*xj))))/(120* bf**3) - \
+          (16 *np.sqrt(cf + bf*xi)*(8*ah*cf**2 - 2*bf*cf*(5*bh + 2*ah*xi) + bf**2*(15*ch + xi*(5*bh + 3*ah*xi))))/(120* bf**3)
+    sqrt_terms = np.where(np.abs(af) < 1e-7, alt, num_sqrt/(8*af**2.5))
+
+    tot = log_terms + sqrt_terms
+
+    return np.real(tot)
+
+def _get_abc(f1,f2,f3,x1,x2,x3):
+    r"""
+    ``get_abc`` finds the coefficients of a quadratic function that fits the function f(x) between three consecutive points.
+    .. math::
+        f(x) = ax^2 + bx + c
+    Args:
+        f: array of function values
+        x: array of x values
+    """
+    # find all a,b,c, and keep it vectorized. We do not assume that x is evenly spaced.
+    a = (x1*(f3-f2) + x2*(f1-f3) + x3*(f2-f1))/(x1-x2)/(x1-x3)/(x2-x3)
+    b = (f2-f1)/(x2-x1) - a*(x1+x2)
+    c = f1 - a*x1**2 - b*x1
+    return a,b,c
+
+def _gquadz(x, f, h):
+    r"""
+    ``gquadz`` calculates the definite integral of
+    .. math::
+        \int_a^b \frac{h(x)}{\sqrt{f(x)}} \mathrm{d}x
+    by assuming that f(x) is a quadratic function between three consecutive points.
+    Args:
+        f: array of function values
+        h: array of h(x) values
+        x: array of x values
+    """        
+    # calculate the integral for each pair of zeros
+    l_zero = x[0]
+    r_zero = x[-1]
+    # create input for a,b,c
+    f_0 = f[0:-2]
+    f_1 = f[1:-1]
+    f_2 = f[2:]
+    h_0 = h[0:-2]
+    h_1 = h[1:-1]
+    h_2 = h[2:]
+    x_0 = x[0:-2]
+    x_1 = x[1:-1]
+    x_2 = x[2:]
+    # find the coefficients of the quadratic functions
+    a_f,b_f,c_f = _get_abc(f_0,f_1,f_2,x_0,x_1,x_2)
+    a_h,b_h,c_h = _get_abc(h_0,h_1,h_2,x_0,x_1,x_2)
+
+    a_f,b_f,c_f = np.append(a_f,a_f[-1]), np.append(b_f,b_f[-1]), np.append(c_f,c_f[-1])
+    a_h,b_h,c_h = np.append(a_h,a_h[-1]), np.append(b_h,b_h[-1]), np.append(c_h,c_h[-1])
+
+    # now construct x_left and x_right
+    x_left  = x[:-1]
+    x_right = x[1:]
+
+    # calculate the integral
+    integral = _gquadz_definite(a_f,b_f,c_f,a_h,b_h,c_h,x_left,x_right)
+    # integral[np.isnan(integral)] = 0.0
+    integral = np.sum(integral)
+
+    return integral
+
+def _cum_gquadz(x, f, h):
+    r"""
+    ``gquadz`` calculates the definite integral of
+    .. math::
+        \int_a^b \frac{h(x)}{\sqrt{f(x)}} \mathrm{d}x
+    by assuming that f(x) is a quadratic function between three consecutive points.
+    Args:
+        f: array of function values
+        h: array of h(x) values
+        x: array of x values
+    """        
+    # calculate the integral for each pair of zeros
+    l_zero = x[0]
+    r_zero = x[-1]
+    # create input for a,b,c
+    f_0 = f[0:-2]
+    f_1 = f[1:-1]
+    f_2 = f[2:]
+    h_0 = h[0:-2]
+    h_1 = h[1:-1]
+    h_2 = h[2:]
+    x_0 = x[0:-2]
+    x_1 = x[1:-1]
+    x_2 = x[2:]
+    # find the coefficients of the quadratic functions
+    a_f,b_f,c_f = _get_abc(f_0,f_1,f_2,x_0,x_1,x_2)
+    a_h,b_h,c_h = _get_abc(h_0,h_1,h_2,x_0,x_1,x_2)
+
+    a_f,b_f,c_f = np.append(a_f,a_f[-1]), np.append(b_f,b_f[-1]), np.append(c_f,c_f[-1])
+    a_h,b_h,c_h = np.append(a_h,a_h[-1]), np.append(b_h,b_h[-1]), np.append(c_h,c_h[-1])
+
+    # now construct x_left and x_right
+    x_left  = x[:-1]
+    x_right = x[1:]
+
+    # calculate the integral
+    integral = _gquadz_definite(a_f,b_f,c_f,a_h,b_h,c_h,x_left,x_right)
+    # integral[np.isnan(integral)] = 0.0
+    integral = np.cumsum(integral)
+
+    return integral
+
 def bounce_integral_discrete(f, h, x, method = "gtrapz"):
     r"""
     ``bounce_integral`` does the bounce integral
@@ -249,6 +394,9 @@ def bounce_integral_discrete(f, h, x, method = "gtrapz"):
     if method == "gtrapz":
         # Compute integral
         val = _gtrapz(x, f, h)
+    elif method == "gquadz":
+        # Compute integral
+        val = _gquadz(x, f, h)
     else:
         if method in ["trapz", "simpsons", "midpoint"]:
             weight = weight_integration(method)
@@ -281,6 +429,10 @@ def cum_bounce_integral_discrete(f, h, x, method = "gtrapz"):
     if method == "gtrapz":
         # Compute integral
         val = _cum_gtrapz(x, f, h)
+        val = np.insert(val, 0, 0.0)
+    elif method == "gquadz":
+        # Compute integral
+        val = _cum_gquadz(x, f, h)
         val = np.insert(val, 0, 0.0)
     else:
         if method in ["trapz", "simpsons", "midpoint"]:

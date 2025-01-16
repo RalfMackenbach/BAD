@@ -49,7 +49,7 @@ h = lambda x: 1 + 0*x
 f = lambda x: 1 - k*k * np.sin(x)**2
 
 ## TRY ##
-N_arr = [20, 50, 100, 200, 500, 1000, 2000]
+N_arr = np.linspace(10, 1000, 50, dtype=int)
 data = []
 # Create a dictionary to store the execution times
 execution_times = {
