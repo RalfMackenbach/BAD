@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib import rc
 import timeit
 
-
+from matplotlib import rc
 rc('font',**{'family':'serif','serif':['Computer Modern Serif'], 'size': 16})
 rc('text', usetex=True)
 

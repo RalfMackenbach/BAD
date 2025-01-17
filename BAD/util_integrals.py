@@ -9,162 +9,64 @@ from numpy.polynomial.legendre import legder, legval, leggauss
 ########################
 # DISCRETE INTEGRATION #
 ########################
-def check_monotonic_array(x):
-    assert np.any(np.less(x[1:],x[:-1])), Warning('x array must be monotonically increasing!')
-    return 0
-
-def trapezoidal_weights(x):
+## BOUNCE INTEGRAL ##
+def bounce_integral_discrete(f, h, x, method = "gtrapz"):
+    r"""
+    ``bounce_integral`` does the bounce integral
+    .. math::
+       \int \frac{h(x)}{\sqrt{f(x)}} \mathrm{d}x.
+    Can be done by either quad if is_func=True, or
+    gtrapz if is_func=False. When is_func=True 
+    both f and h need to be functions. Otherwise
+    they should be arrays. sinhtanh can furthermore
+    be set to either True of False to use sinhtanh
+    quadrature methods (only is is_func=True).
+     Args:
+        f: function or arrays containing f
+        h: function or arrays containing h
     """
-    Compute weights for the trapezoidal rule more efficiently.
-    
-    Parameters:
-        x (array-like): Grid points.
-        
-    Returns:
-        weights (array-like): Trapezoidal rule weights.
-    """
-    N = len(x)
-    weights = np.zeros(N)
-
-    # Add the contributions from the intervals directly
-    weights[1:-1] = (x[2:] - x[:-2]) / 2  # Interior points
-    weights[0] = (x[1] - x[0]) / 2        # Left endpoint
-    weights[-1] = (x[-1] - x[-2]) / 2     # Right endpoint
-
-    return weights
-
-def simpsons_weights(x):
-    """
-    Compute weights for Simpson's rule with non-uniform grid points.
-    
-    Parameters:
-        x (array-like): Grid points (must have an odd number of points).
-        
-    Returns:
-        weights (array-like): Simpson's rule weights.
-    """
-    N = len(x)
-    if (N - 1) % 2 != 0:
-        raise ValueError("Simpson's rule requires an odd number of points (even number of intervals).")
-
-    # Compute intervals
-    h0 = x[1:-1:2] - x[:-2:2]  # Left intervals
-    h1 = x[2::2] - x[1:-1:2]   # Right intervals
-    h_sum = h0 + h1            # Combined interval widths
-
-    # Weights for each triplet of points
-    w_left = h0 * (2 * h0 + h1) / (6 * h_sum)
-    w_mid = (h0 + h1) ** 2 / (6 * h_sum)
-    w_right = h1 * (2 * h1 + h0) / (6 * h_sum)
-
-    # Assemble full weights array
-    weights = np.zeros(N)
-    weights[:-2:2] += w_left  # Left points
-    weights[1:-1:2] += w_mid  # Middle points
-    weights[2::2] += w_right  # Right points
-
-    return weights
-
-def midpoint_weights(x):
-    """
-    Compute weights for the midpoint rule with non-uniform grid points (vectorized).
-    
-    Parameters:
-        x (array-like): Grid points.
-        
-    Returns:
-        weights (array-like): Midpoint rule weights.
-    """
-    N = len(x)
-    if N < 2:
-        raise ValueError("At least two grid points are required.")
-
-    # Compute interval widths
-    dx_left = np.zeros(N)   # Interval widths to the left of each point
-    dx_right = np.zeros(N)  # Interval widths to the right of each point
-
-    dx_left[1:] = (x[1:] - x[:-1]) / 2   # Left intervals
-    dx_right[:-1] = (x[1:] - x[:-1]) / 2  # Right intervals
-
-    # Combine contributions
-    weights = dx_left + dx_right
-
-    return weights
-
-def newton_cotes_weights(x, order):
-    """
-    Compute the weights for Newton-Cotes quadrature on a non-uniform grid for a given order.
-    
-    Parameters:
-        x (array-like): Grid points (non-uniform).
-        order (int): Order of the Newton-Cotes rule (1 to 4).
-        
-    Returns:
-        weights (array-like): The corresponding weights for the given order.
-    """
-    
-    # Ensure the order is between 1 and 4, or use the Vermont approach for higher orders
-    if order < 1:
-        raise ValueError("Order must be greater than or equal to 1.")
-    
-    N = len(x)
-    weights = np.zeros(N)
-    
-    # Calculate the distances (dx) between adjacent points
-    dx = x[1:] - x[:-1]
-    
-    if order == 1:  # Trapezoidal Rule (order 1)
-        # Trapezoidal rule: weights for each pair of points
-        weights[:-1] += dx / 2
-        weights[1:] += dx / 2
-    
-    elif order == 2:  # Simpson's Rule (order 2)
-        # Simpson's rule: weights for every three consecutive points
-        weights[::2] += (dx[:-1] + dx[1:]) / 6  # Odd-index points
-        weights[1:-1:2] += 2 * (dx[:-1] + dx[1:]) / 3  # Even-index points
-    
-    elif order == 3:  # 3rd-order Newton-Cotes (order 3)
-        # 3rd-order weights: calculated for every set of 4 consecutive points
-        weights[::3] += 3 * (dx[2:] + dx[1:-1] + dx[:-2]) / 8
-        weights[1:-2:3] += 9 * (dx[2:] + dx[1:-1] + dx[:-2]) / 8
-        weights[2:-1:3] += 3 * (dx[2:] + dx[1:-1] + dx[:-2]) / 8
-    
-    elif order == 4:  # Boole's Rule (order 4)
-        # Boole's rule: weights for every five consecutive points
-        weights[::4] += 7 * (dx[3:] + dx[2:-1] + dx[1:-2] + dx[:-3]) / 90
-        weights[1:-3:4] += 32 * (dx[3:] + dx[2:-1] + dx[1:-2] + dx[:-3]) / 90
-        weights[2:-2:4] += 12 * (dx[3:] + dx[2:-1] + dx[1:-2] + dx[:-3]) / 90
-        weights[3:-1:4] += 32 * (dx[3:] + dx[2:-1] + dx[1:-2] + dx[:-3]) / 90
-        weights[4::4] += 7 * (dx[3:] + dx[2:-1] + dx[1:-2] + dx[:-3]) / 90
-    
-    elif order > 4:  # For orders higher than 4, use Vermont's method or a similar high-order Newton-Cotes
-        N = len(x)
-    
-        # Generate the Vandermonde matrix for the grid points
-        V = np.vander(x, order+1, increasing=True)
-        
-        # Right-hand side for the quadrature (unitary function values at grid points)
-        b = np.zeros(N)
-        b[0] = 1  # First weight is 1 for the first grid point (this can vary)
-        
-        # Solve the system V * w = b to find the weights
-        weights = np.linalg.solve(V, b)
-    
-    return weights
-
-def weight_integration(x, method):
-
-    if method == "trapz":
-        weight = trapezoidal_weights(x)
-    elif method == "simpsons":
-        weight = simpsons_weights(x)
-    elif method == "midpoint":
-        weight = midpoint_weights(x)
+    if method == "gtrapz":
+        # Compute integral
+        val = _gtrapz(x, f, h)
+    elif method == "gquadz":
+        # Compute integral
+        val = _gquadz(x, f, h)
     else:
-        raise Warning("No other discrete method to work on the grid has been implemented!")
+        raise Warning("Discrete integration method not recognised!")
+        
+    return val
 
-    return weight
+## CUMULATIVE INTEGRAL ##
+def cum_bounce_integral_discrete(f, h, x, method = "gtrapz"):
+    r"""
+    ``bounce_integral`` does the bounce integral
+    .. math::
+       \int \frac{h(x)}{\sqrt{f(x)}} \mathrm{d}x.
+    Can be done by either quad if is_func=True, or
+    gtrapz if is_func=False. When is_func=True 
+    both f and h need to be functions. Otherwise
+    they should be arrays. sinhtanh can furthermore
+    be set to either True of False to use sinhtanh
+    quadrature methods (only is is_func=True).
+     Args:
+        f: function or arrays containing f
+        h: function or arrays containing h
+    """
+    if method == "gtrapz":
+        # Compute integral
+        val = _cum_gtrapz(x, f, h)
+        val = np.insert(val, 0, 0.0)
+    elif method == "gquadz":
+        # Compute integral
+        val = _cum_gquadz(x, f, h)
+        val = np.insert(val, 0, 0.0)
+    else:
+        raise Warning("Discrete integration method not recognised!")
+        
+    return x, val
 
+## INTEGRATION ALGORITHMS ##
+# gtrapz
 def _gtrapz(x, f, h, tol = 1e-10):
     r"""
     ``gtrapz`` estimates integrals of the form
@@ -215,21 +117,84 @@ def _cum_gtrapz(x, f, h, tol = 1e-10):
     
     return np.cumsum(ans)
 
-def normalise_map(x):
-    # Compute edges
-    edge_l = x[0]
-    edge_r = x[-1]
+# gquadz
+def _gquadz(x, f, h):
+    r"""
+    ``gquadz`` calculates the definite integral of
+    .. math::
+        \int_a^b \frac{h(x)}{\sqrt{f(x)}} \mathrm{d}x
+    by assuming that f(x) is a quadratic function between three consecutive points.
+    Args:
+        f: array of function values
+        h: array of h(x) values
+        x: array of x values
+    """        
+    # calculate the integral for each pair of zeros
+    l_zero = x[0]
+    r_zero = x[-1]
+    # create input for a,b,c
+    f_0 = f[0:-2]
+    f_1 = f[1:-1]
+    f_2 = f[2:]
+    h_0 = h[0:-2]
+    h_1 = h[1:-1]
+    h_2 = h[2:]
+    x_0 = x[0:-2]
+    x_1 = x[1:-1]
+    x_2 = x[2:]
+    # find the coefficients of the quadratic functions
+    a_f,b_f,c_f = _get_abc(f_0,f_1,f_2,x_0,x_1,x_2)
+    a_h,b_h,c_h = _get_abc(h_0,h_1,h_2,x_0,x_1,x_2)
 
-    # Normalised x
-    factor = 2/(edge_r - edge_l)
-    x_norm = factor*(x - edge_l) - 1
+    a_f,b_f,c_f = np.append(a_f,a_f[-1]), np.append(b_f,b_f[-1]), np.append(c_f,c_f[-1])
+    a_h,b_h,c_h = np.append(a_h,a_h[-1]), np.append(b_h,b_h[-1]), np.append(c_h,c_h[-1])
 
-    return x_norm, factor
+    # now construct x_left and x_right
+    x_left  = x[:-1]
+    x_right = x[1:]
 
-def sin_map(x, pass_t = False):
-    # Take from x along the fieldline to t
-    t = 2/np.pi*np.arcsin(2*(x - x[0])/(x[-1] - x[0]) - 1)
-    return t
+    # calculate the integral
+    integral = _gquadz_definite(a_f,b_f,c_f,a_h,b_h,c_h,x_left,x_right)
+    # integral[np.isnan(integral)] = 0.0
+    integral = np.sum(integral)
+
+    return integral
+
+def _cum_gquadz(x, f, h):
+    r"""
+    ``gquadz`` calculates the definite integral of
+    .. math::
+        \int_a^b \frac{h(x)}{\sqrt{f(x)}} \mathrm{d}x
+    by assuming that f(x) is a quadratic function between three consecutive points.
+    Args:
+        f: array of function values
+        h: array of h(x) values
+        x: array of x values
+    """        
+    # calculate the integral for each pair of zeros
+    l_zero = x[0]
+    r_zero = x[-1]
+    # create input for a,b,c
+    f_0 = f[0:-2]; f_1 = f[1:-1]; f_2 = f[2:]
+    h_0 = h[0:-2]; h_1 = h[1:-1]; h_2 = h[2:]
+    x_0 = x[0:-2]; x_1 = x[1:-1]; x_2 = x[2:]
+    # find the coefficients of the quadratic functions
+    a_f,b_f,c_f = _get_abc(f_0,f_1,f_2,x_0,x_1,x_2)
+    a_h,b_h,c_h = _get_abc(h_0,h_1,h_2,x_0,x_1,x_2)
+    # Treat last subinterval the same way
+    a_f,b_f,c_f = np.append(a_f,a_f[-1]), np.append(b_f,b_f[-1]), np.append(c_f,c_f[-1])
+    a_h,b_h,c_h = np.append(a_h,a_h[-1]), np.append(b_h,b_h[-1]), np.append(c_h,c_h[-1])
+
+    # now construct x_left and x_right
+    x_left  = x[:-1]
+    x_right = x[1:]
+
+    # calculate the integral
+    integral = _gquadz_definite(a_f,b_f,c_f,a_h,b_h,c_h,x_left,x_right)
+    # integral[np.isnan(integral)] = 0.0
+    integral = np.cumsum(integral)
+
+    return integral
 
 def _gquadz_definite(af,bf,cf,ah,bh,ch,xi,xj):
     r"""
@@ -292,381 +257,61 @@ def _get_abc(f1,f2,f3,x1,x2,x3):
     c = f1 - a*x1**2 - b*x1
     return a,b,c
 
-def _gquadz(x, f, h):
-    r"""
-    ``gquadz`` calculates the definite integral of
-    .. math::
-        \int_a^b \frac{h(x)}{\sqrt{f(x)}} \mathrm{d}x
-    by assuming that f(x) is a quadratic function between three consecutive points.
-    Args:
-        f: array of function values
-        h: array of h(x) values
-        x: array of x values
-    """        
-    # calculate the integral for each pair of zeros
-    l_zero = x[0]
-    r_zero = x[-1]
-    # create input for a,b,c
-    f_0 = f[0:-2]
-    f_1 = f[1:-1]
-    f_2 = f[2:]
-    h_0 = h[0:-2]
-    h_1 = h[1:-1]
-    h_2 = h[2:]
-    x_0 = x[0:-2]
-    x_1 = x[1:-1]
-    x_2 = x[2:]
-    # find the coefficients of the quadratic functions
-    a_f,b_f,c_f = _get_abc(f_0,f_1,f_2,x_0,x_1,x_2)
-    a_h,b_h,c_h = _get_abc(h_0,h_1,h_2,x_0,x_1,x_2)
-
-    a_f,b_f,c_f = np.append(a_f,a_f[-1]), np.append(b_f,b_f[-1]), np.append(c_f,c_f[-1])
-    a_h,b_h,c_h = np.append(a_h,a_h[-1]), np.append(b_h,b_h[-1]), np.append(c_h,c_h[-1])
-
-    # now construct x_left and x_right
-    x_left  = x[:-1]
-    x_right = x[1:]
-
-    # calculate the integral
-    integral = _gquadz_definite(a_f,b_f,c_f,a_h,b_h,c_h,x_left,x_right)
-    # integral[np.isnan(integral)] = 0.0
-    integral = np.sum(integral)
-
-    return integral
-
-def _cum_gquadz(x, f, h):
-    r"""
-    ``gquadz`` calculates the definite integral of
-    .. math::
-        \int_a^b \frac{h(x)}{\sqrt{f(x)}} \mathrm{d}x
-    by assuming that f(x) is a quadratic function between three consecutive points.
-    Args:
-        f: array of function values
-        h: array of h(x) values
-        x: array of x values
-    """        
-    # calculate the integral for each pair of zeros
-    l_zero = x[0]
-    r_zero = x[-1]
-    # create input for a,b,c
-    f_0 = f[0:-2]
-    f_1 = f[1:-1]
-    f_2 = f[2:]
-    h_0 = h[0:-2]
-    h_1 = h[1:-1]
-    h_2 = h[2:]
-    x_0 = x[0:-2]
-    x_1 = x[1:-1]
-    x_2 = x[2:]
-    # find the coefficients of the quadratic functions
-    a_f,b_f,c_f = _get_abc(f_0,f_1,f_2,x_0,x_1,x_2)
-    a_h,b_h,c_h = _get_abc(h_0,h_1,h_2,x_0,x_1,x_2)
-
-    a_f,b_f,c_f = np.append(a_f,a_f[-1]), np.append(b_f,b_f[-1]), np.append(c_f,c_f[-1])
-    a_h,b_h,c_h = np.append(a_h,a_h[-1]), np.append(b_h,b_h[-1]), np.append(c_h,c_h[-1])
-
-    # now construct x_left and x_right
-    x_left  = x[:-1]
-    x_right = x[1:]
-
-    # calculate the integral
-    integral = _gquadz_definite(a_f,b_f,c_f,a_h,b_h,c_h,x_left,x_right)
-    # integral[np.isnan(integral)] = 0.0
-    integral = np.cumsum(integral)
-
-    return integral
-
-def bounce_integral_discrete(f, h, x, method = "gtrapz"):
-    r"""
-    ``bounce_integral`` does the bounce integral
-    .. math::
-       \int \frac{h(x)}{\sqrt{f(x)}} \mathrm{d}x.
-    Can be done by either quad if is_func=True, or
-    gtrapz if is_func=False. When is_func=True 
-    both f and h need to be functions. Otherwise
-    they should be arrays. sinhtanh can furthermore
-    be set to either True of False to use sinhtanh
-    quadrature methods (only is is_func=True).
-     Args:
-        f: function or arrays containing f
-        h: function or arrays containing h
-    """
-    if method == "gtrapz":
-        # Compute integral
-        val = _gtrapz(x, f, h)
-    elif method == "gquadz":
-        # Compute integral
-        val = _gquadz(x, f, h)
+## INVERSE MAPPING ##
+def effect_inverse_map(mapping, x_ls, x_rs, scale):
+    # We map the x domain into t ∈ [-1, 1], the real domain to a more convenient one to deal with singularities.
+    # We return the map and dx(t)/dt
+    # Depending on which map is chosen, proceed differently
+    if mapping == "normal":
+        ## Standard simple case: 
+        ## simply uniform map from x ∈ [x_l, x_r] ↦ t ∈ [−1, 1]
+        # Compute map
+        factor = 2.0/(x_rs - x_ls)
+        map = lambda x: factor * (x - x_ls) - 1
+        # The derivative of the inverse map respect to t [if we think of x = x(t), then dx/dt]
+        d_map = lambda t: 1/factor + t*0
+    elif mapping == "sin":
+        ## Sin case: 
+        ## method used by Unalmis in https://doi.org/10.48550/arXiv.2412.01724, where a sine mapping is used 
+        ## to ameliorate the divergence of the integrand near bounce points. The map is from x ∈ [x_l, x_r] to 
+        ## t ∈ [−1, 1] using t = (2/π)*arcsin(2/(xr - xl)*(x - xl) - 1).
+        # Construct map
+        map = lambda x: 2/np.pi*np.arcsin(2/(x_rs - x_ls) * (x - x_ls) - 1)
+        # Differentiate inverse map [if we think of x = x(t), then dx/dt]
+        d_map = lambda t: 0.5*(x_rs - x_ls) * 0.5*np.pi * np.cos(0.5*np.pi*t)
+    elif mapping == "takashi":
+        ## Double exponential method: we need to reverse the double-exponential map x = 0.5 (x_r + x_l) + 0.5 (x_r - x_l) tanh(π sinh(t) / 2)
+        ## where t ∈ [-scale, scale]. So t = arcsinh((2/π)*arctanh(2/(x_r - x_l)*(x - 0.5 (x_r + x_l))))
+        # Compute map
+        t_max = scale
+        map = lambda x: np.arcsinh(2/np.pi*np.arctanh(2/(x_rs - x_ls)*(x - 0.5*(x_rs + x_ls))))/t_max
+        # Differentiate inverse map [if we think of x = x(t), then dx/dt]
+        d_map = lambda t:  0.5*(x_rs - x_ls) * 0.5 * np.pi * t_max * np.cosh(t_max * t) / np.cosh(0.5 * np.pi * np.sinh(t_max * t)) ** 2
+    elif mapping == "exponential_l":
+        ## Single exponential method: the method maps t ∈ [-1, 1] to ↦ [0, scale] and then to x ↦ x_r - (x_r - x_l) exp(-t)
+        ## we are meant to invert that here. So t = -ln((x - x_r)/(x_l - x_r)).
+        # Compute map
+        t_max = scale
+        map = lambda x: -2*np.log((x - x_rs)/(x_ls - x_rs))/scale - 1
+        # Differentiate inverse map [if we think of x = x(t), then dx/dt]
+        d_map = lambda t:  (x_rs - x_ls) * 0.5 * scale * np.exp(-0.5 * scale * (t + 1))
+    elif mapping == "exponential_r":
+        ## Single exponential method: the method maps t ∈ [-1, 1] to ↦ [0, scale] and then to x ↦ x_l - (x_l - x_r) exp(-t) so as to 
+        ## avoid right touching of the edge. We are meant to invert that here. So t = -ln((x - x_l)/(x_r - x_l)).
+        # Compute map
+        t_max = scale
+        map = lambda x: -2*np.log((x - x_ls)/(x_rs - x_ls))/scale - 1
+        # Differentiate inverse map [if we think of x = x(t), then dx/dt]
+        d_map = lambda t:  (x_ls - x_rs) * 0.5 * scale * np.exp(-0.5 * scale * (t + 1))
     else:
-        if method in ["trapz", "simpsons", "midpoint"]:
-            weight = weight_integration(method)
-            div = np.divide(weight * h, np.sqrt(f))
-            val = np.sum(div)
-        elif method in ["sin_trapz", "sin_simpsons", "sin_midpoint"]:
-            weight = weight_integration(method[4:])
-            # t = sin_map(x)
-            # val = np.sum(f)
-        else:
-            raise Warning("Discrete integration method not recognised!")
-        
-    return val
-
-def cum_bounce_integral_discrete(f, h, x, method = "gtrapz"):
-    r"""
-    ``bounce_integral`` does the bounce integral
-    .. math::
-       \int \frac{h(x)}{\sqrt{f(x)}} \mathrm{d}x.
-    Can be done by either quad if is_func=True, or
-    gtrapz if is_func=False. When is_func=True 
-    both f and h need to be functions. Otherwise
-    they should be arrays. sinhtanh can furthermore
-    be set to either True of False to use sinhtanh
-    quadrature methods (only is is_func=True).
-     Args:
-        f: function or arrays containing f
-        h: function or arrays containing h
-    """
-    if method == "gtrapz":
-        # Compute integral
-        val = _cum_gtrapz(x, f, h)
-        val = np.insert(val, 0, 0.0)
-    elif method == "gquadz":
-        # Compute integral
-        val = _cum_gquadz(x, f, h)
-        val = np.insert(val, 0, 0.0)
-    else:
-        if method in ["trapz", "simpsons", "midpoint"]:
-            weight = weight_integration(method)
-            div = np.divide(weight * h, np.sqrt(f))
-            val = np.sum(div)
-        elif method in ["sin_trapz", "sin_simpsons", "sin_midpoint"]:
-            weight = weight_integration(method[4:])
-            # t = sin_map(x)
-            # val = np.sum(f)
-        else:
-            raise Warning("Discrete integration method not recognised!")
-        
-    return x, val
-
-def newton_cotes_weights_uniform(N, order, avoid_edges = False):
-    """
-    Compute the weights for Newton-Cotes quadrature on a uniform grid.
+        raise Warning("Mapping {} not implemented!".format(mapping))
     
-    Parameters:
-        x (array-like): Grid points (uniform grid).
-        order (int): Order of the Newton-Cotes rule (1 to higher orders).
-        
-    Returns:
-        weights (array-like): The corresponding weights for the given order.
-    """
-   
-    if order == 1:  # Trapezoidal Rule (order 1)
-        if avoid_edges:
-            x = np.linspace(-1, 1, N+2)
-            x = x[1:-1]
-        else:
-            x = np.linspace(-1, 1, N)
-        h = x[1] - x[0]  # uniform grid spacing
-        
-        w = np.zeros(N)
-        w[0] = h / 2
-        w[-1] = h / 2
-        w[1:-1] = h
-    
-    elif order == 2:  # Simpson's Rule (order 2)
-        # Need to make sure that N is made odd
-        N -= 1 + (N % 2)
-        if avoid_edges:
-            x = np.linspace(-1, 1, N+2)
-            x = x[1:-1]
-        else:
-            x = np.linspace(-1, 1, N)
-        h = x[1] - x[0]  # uniform grid spacing
-        
-        w = np.zeros(N)
-        w[0] = w[-1] = h / 3
-        w[1:-1:2] = 4 * h / 3  # Odd-index points
-        w[2:-1:2] = 2 * h / 3  # Even-index points
-    
-    elif order == 4:  # Boole's Rule (order 4)
-        # Need to make sure that N is made odd
-        N -= 1 + (N % 4)
-        if avoid_edges:
-            x = np.linspace(-1, 1, N+2)
-            x = x[1:-1]
-        else:
-            x = np.linspace(-1, 1, N)
-        h = x[1] - x[0]  # uniform grid spacing
+    return map, d_map
 
-        w = np.zeros(N)
-        w[0] = w[-1] = 14 * h / 45
-        w[1::2] = 64 * h / 45
-        w[2::4] = 8 * h / 15
-        w[4::4] = 28 * h / 45
-    else:
-        raise ValueError("Only orders 1, 2, and 4 are implemented for uniform grid.")
-    
-    return x, w
-    
-def chebgauss1(N):
-    """
-    Gauss-Chebyshev quadrature.
-
-    Returns quadrature points xₖ and weights wₖ for the approximate evaluation
-    of the integral ∫₋₁¹ f(x) dx ≈ ∑ₖ wₖ f(xₖ).
-
-    Parameters
-    ----------
-    N : int
-        Number of quadrature points.
-
-    Returns
-    -------
-    x, w : tuple[np.ndarray]
-        Shape (N, ).
-        Quadrature points and weights.
-
-    """
-    x, w = chebgauss(N)         # Weight for integration with factor 1/√1-x²
-    return x, w / chebweight(x) # Renormalise for the right integral without square root
-
-def chebgauss2(N):
-    """Gauss-Chebyshev quadrature of the second kind.
-
-    Returns quadrature points xₖ and weights wₖ for the approximate evaluation
-    of the integral ∫₋₁¹ f(x) dx ≈ ∑ₖ wₖ f(xₖ).
-
-    Parameters
-    ----------
-    N : int
-        Number of quadrature points.
-
-    Returns
-    -------
-    x, w : tuple[np.ndarray]
-        Shape (N, ).
-        Quadrature points and weights.
-
-    """
-    # Adapted from
-    # github.com/scipy/scipy/blob/v1.14.1/scipy/special/_orthogonal.py#L1803-L1851.
-    m = int(N)
-    if N < 1 or N != m:
-        raise ValueError('n must be a positive integer.')
-    t = np.arange(m, 0, -1) * np.pi / (m + 1)
-    x = np.cos(t)
-    w = np.pi * np.sin(t)**2 / (m + 1)
-    
-    return x, w * chebweight(x)
-
-def leggauss_lob(N, interior_only=True):
-    """
-    Compute nodes and weights for Lobatto-Gauss-Legendre quadrature.
-
-    Parameters:
-        N (int): Number of nodes (including endpoints).
-
-    Returns:
-        x (numpy array): Quadrature nodes.
-        w (numpy array): Quadrature weights.
-    """
-    N = N + 2 * bool(interior_only)
-    if N < 2:
-        raise ValueError("Number of nodes must be at least 2.")
-
-    # Golub-Welsh algorithm
-    n = np.arange(2, N - 1)
-    x = eigh_tridiagonal(np.zeros(N - 2), np.sqrt((n**2 - 1) / (4 * n**2 - 1)), eigvals_only = True)
-    c0 = np.zeros(N)
-    c0[-1] = 1
-
-    # improve (single multiplicity) roots by one application of Newton
-    c = legder(c0)
-    dy = legval(x=x, c=c)
-    df = legval(x=x, c=legder(c))
-    x -= dy / df
-
-    w = 2 / (N * (N - 1) * legval(x=x, c=c0) ** 2)
-
-    if not interior_only:
-        x = np.hstack([-1.0, x, 1.0])
-        w_end = 2 / (N * (N - 1))
-        w = np.hstack([w_end, w, w_end])
-
-    assert x.size == w.size == N - 2 * bool(interior_only)
-
-    return x, w
-
-def leggaus(N):
-    # Call leggaus for Gauss-Legendre quadrature from np
-    return leggauss(N)
-
-def takashi(N, t_max = 3.0):
-    """
-    Double exponential integration method. We consider an equally spaced grid in t ∈ [-t_max, t_max],
-    and return the grid and weight correspondingly.
-    """
-    # Choose t_max
-    # x_max = 1.0
-    # t_max = np.arcsinh(2 * np.arctanh(x_max) / np.pi)
-    x_max = 3.05
-    x = np.linspace(-x_max, x_max, N)
-    w = x[1] - x[0]
-
-    return x, w
-
-def clenshaw_curtis(n):
-    """
-    Computes a Clenshaw-Curtis quadrature rule without explicit loops. 
-    Adapted https://people.math.sc.edu/Burkardt/py_src/quadrule/clenshaw_curtis_compute.py.
-    
-    Parameters:
-        n (int): The order of the rule.
-    
-    Returns:
-        x (ndarray): The abscissas.
-        w (ndarray): The weights.
-    """
-    if n == 1:
-        # sFor n = 1, return the single point and its weight
-        x = np.zeros(n)
-        w = np.zeros(n)
-        w[0] = 2.0
-        return x, w
-
-    # Calculate the abscissas (nodes)
-    theta = np.pi * np.linspace(0, n - 1, n) / (n - 1)
-    x = np.cos(theta)
-
-    # Initialize the weights
-    w = np.ones(n)
-
-    # Vectorized weight calculation (remove the double loop)
-    j = np.arange(0, (n - 1) // 2)  # j ranges from 0 to (n-1)//2 - 1
-    
-    # Create b: 1.0 for the special case, otherwise 2.0
-    b = np.where(2 * (j + 1) == (n - 1), 1.0, 2.0)
-    
-    # Compute the cosine terms for all i, j
-    cos_terms = np.cos(2 * (j[:, None] + 1) * theta[None, :])  # shape (j.size, n)
-    
-    # Calculate the denominator for each j
-    denominator = 4 * j * (j + 2) + 3  # shape (j.size,)
-    
-    # Update the weights (for all i simultaneously)
-    weight_contribution = np.sum(b[:, None] * cos_terms / denominator[:, None], axis=0)
-    w -= weight_contribution
-
-    # Normalize the weights
-    w[0] /= (n - 1)
-    w[1:n-1] *= 2.0 / (n - 1)
-    w[n-1] /= (n - 1)
-
-    return x, w
-
-
-    return x, w
-
+######################
+# FUNCTION INTEGRALS #
+######################
+## BOUNCE INTEGRAL ##
 def bounce_integral_fn(f, h, x_l, x_r, N = 100, method = "quad", order = 1, mapping = "sin", scale = 3.0, trim = False):
     ##############################
     # CONSTRUCT WEIGHTS AND GRID #
@@ -692,85 +337,7 @@ def bounce_integral_fn(f, h, x_l, x_r, N = 100, method = "quad", order = 1, mapp
     
     return res
 
-def effect_map(mapping, x_ls, x_rs, scale):
-    # We map the t ∈ [-1, 1] domains into x subdomains, the real domain of the input functions.
-    # Depending on which map is chosen, proceed differently
-    if mapping == "normal":
-        ## Standard simple case: 
-        ## simply uniform map from t ∈ [−1, 1] to x ∈ [x_l, x_r]
-        # Compute map
-        factor = 0.5*(x_rs - x_ls)
-        map = lambda t: x_ls + factor * (t + 1)
-        # The derivative of the map respect to t
-        d_map = lambda t: factor + t*0
-    elif mapping == "sin":
-        ## Sin case: 
-        ## method used by Unalmis in https://doi.org/10.48550/arXiv.2412.01724, where a sine mapping is used 
-        ## to ameliorate the divergence of the integrand near bounce points. The map is from t ∈ [−1, 1] to 
-        ## x ∈ [x_l, x_r] using x = xl + 0.5 (xr - xl) * (1 + sin(πt/2)).
-        # Construct map
-        map = lambda t: x_ls + 0.5*(x_rs - x_ls) * (1 + np.sin(0.5*np.pi*t))
-        # Differentiate map
-        d_map = lambda t: 0.5*(x_rs - x_ls) * 0.5*np.pi * np.cos(0.5*np.pi*t)
-    elif mapping == "takashi":
-        ## Double exponential method: the key of the scheme is to have a regular grid in t ∈ [-scale, scale] 
-        ## and map it to ↦ x using x = 0.5 (x_r + x_l) + 0.5 (x_r - x_l) tanh(π sinh(t) / 2)
-        # Compute map
-        t_max = scale
-        map = lambda t: 0.5*(x_rs + x_ls) + 0.5*(x_rs - x_ls) * np.tanh(0.5 * np.pi * np.sinh(t_max * t))
-        # Differentiate map
-        d_map = lambda t:  0.5*(x_rs - x_ls) * 0.5 * np.pi * t_max * np.cosh(t_max * t) / np.cosh(0.5 * np.pi * np.sinh(t_max * t)) ** 2
-    elif mapping == "exponential_l":
-        ## Single exponential method: the key of the scheme is to have a regular grid in t ∈ [-1, 1] 
-        ## map it to ↦ [0, scale] and then map it to x ↦ x_r - (x_r - x_l) exp(-t)
-        # Compute map
-        t_max = scale
-        map = lambda t: x_rs + (x_ls - x_rs) * np.exp(-0.5 * scale * (t + 1))
-        # Differentiate map
-        d_map = lambda t:  (x_rs - x_ls) * 0.5 * scale * np.exp(-0.5 * scale * (t + 1))
-    elif mapping == "exponential_r":
-        ## Single exponential method: the key of the scheme is to have a regular grid in t ∈ [-1, 1] 
-        ## map it to ↦ [0, scale] and then map it to x ↦ x_l - (x_l - x_r) exp(-t), so now avoid 
-        ## touching the right of the domain
-        # Compute map
-        t_max = scale
-        map = lambda t: x_ls + (x_rs - x_ls) * np.exp(-0.5 * scale * (t + 1))
-        # Differentiate map
-        d_map = lambda t:  (x_ls - x_rs) * 0.5 * scale * np.exp(-0.5 * scale * (t + 1))
-    else:
-        raise Warning("Mapping {} not implemented!".format(mapping))
-    
-    return map, d_map
-
-def select_int_method_tw(method, k, order = 1, trim = False):
-    """
-    Make grid points and weights for integrating in the interval t ∈ [-1, 1]
-    """
-    # All the grids here are constructed in the interval t ∈ [−1, 1]
-    if method == "chebgauss1":
-        # Gauss-Chebyshev quadrature
-        t, w = chebgauss1(k)
-    elif method == "chebgauss2":
-        # Alternative Gauss-Chebyshev quadrature: Ulnamis https://doi.org/10.48550/arXiv.2412.01724 adapted 
-        # from github.com/scipy/scipy/blob/v1.14.1/scipy/special/_orthogonal.py#L1803-L1851 
-        t, w = chebgauss2(k)
-    elif method == "quad":
-        # Standard uniform grid quadrature schemes using Newton - Cotes method
-        # order = 1 : trapezoid
-        # order = 2 : simpson
-        # order = 4 : boole
-        t, w = newton_cotes_weights_uniform(k, order = order, avoid_edges = trim)
-    elif method == "GL":
-        # Gauss-Legendre quadrature
-        t, w = leggauss(k)
-    elif method == "clenshaw":
-        # Clenshaw-Curtis quadrature
-        t, w = clenshaw_curtis(k)
-    else:
-        raise Warning("Not implemented!")
-    
-    return t, w
-
+## CUMULATIVE INTEGRAL ##
 def cum_bounce_integral_fn(f, h, x_l, x_r, x_out = None, N = 100, approach = "subdomains",
                             features = {"method": "quad", "which_sub": 0, "order": 1, "k": 4, "mapping": "sin", "scale": 3.0, "trim": False}):
     # There are different forms of proceeding.
@@ -926,9 +493,522 @@ def cum_bounce_integral_fn(f, h, x_l, x_r, x_out = None, N = 100, approach = "su
     
     return x, res
 
+## INTEGRATION ALGORITHMS ##
+# Higher level construtor of weights
+def select_int_method_tw(method, k, order = 1, trim = False):
+    """
+    Make grid points and weights for integrating in the interval t ∈ [-1, 1]
+    """
+    # All the grids here are constructed in the interval t ∈ [−1, 1]
+    if method == "chebgauss1":
+        # Gauss-Chebyshev quadrature
+        t, w = chebgauss1(k)
+    elif method == "chebgauss2":
+        # Alternative Gauss-Chebyshev quadrature: Ulnamis https://doi.org/10.48550/arXiv.2412.01724 adapted 
+        # from github.com/scipy/scipy/blob/v1.14.1/scipy/special/_orthogonal.py#L1803-L1851 
+        t, w = chebgauss2(k)
+    elif method == "quad":
+        # Standard uniform grid quadrature schemes using Newton - Cotes method
+        # order = 1 : trapezoid
+        # order = 2 : simpson
+        # order = 4 : boole (not fully tested)
+        t, w = newton_cotes_weights_uniform(k, order = order, avoid_edges = trim)
+    elif method == "GL":
+        # Gauss-Legendre quadrature
+        t, w = leggauss(k)
+    elif method == "clenshaw":
+        # Clenshaw-Curtis quadrature
+        t, w = clenshaw_curtis(k)
+    else:
+        raise Warning("Not implemented!")
+    
+    return t, w
+
+## QUADRATURE SCHEMES ##
+# Gauss- Chebyshev
+def chebgauss1(N):
+    """
+    Gauss-Chebyshev quadrature.
+
+    Returns quadrature points xₖ and weights wₖ for the approximate evaluation
+    of the integral ∫₋₁¹ f(x) dx ≈ ∑ₖ wₖ f(xₖ).
+
+    Parameters
+    ----------
+    N : int
+        Number of quadrature points.
+
+    Returns
+    -------
+    x, w : tuple[np.ndarray]
+        Shape (N, ).
+        Quadrature points and weights.
+
+    """
+    x, w = chebgauss(N)         # Weight for integration with factor 1/√1-x²
+    return x, w / chebweight(x) # Renormalise for the right integral without square root
+
+def chebgauss2(N):
+    """Gauss-Chebyshev quadrature of the second kind.
+
+    Returns quadrature points xₖ and weights wₖ for the approximate evaluation
+    of the integral ∫₋₁¹ f(x) dx ≈ ∑ₖ wₖ f(xₖ).
+
+    Parameters
+    ----------
+    N : int
+        Number of quadrature points.
+
+    Returns
+    -------
+    x, w : tuple[np.ndarray]
+        Shape (N, ).
+        Quadrature points and weights.
+
+    """
+    # Adapted from
+    # github.com/scipy/scipy/blob/v1.14.1/scipy/special/_orthogonal.py#L1803-L1851.
+    m = int(N)
+    if N < 1 or N != m:
+        raise ValueError('n must be a positive integer.')
+    t = np.arange(m, 0, -1) * np.pi / (m + 1)
+    x = np.cos(t)
+    w = np.pi * np.sin(t)**2 / (m + 1)
+    
+    return x, w * chebweight(x)
+
+# Newton-Cotes in uniform grid
+def newton_cotes_weights_uniform(N, order, avoid_edges = False):
+    """
+    Compute the weights for Newton-Cotes quadrature on a uniform grid.
+    
+    Parameters:
+        N (int): number of grid points for uniform grid. If Simpson or Boole round to the right 4*prder+1 value
+        order (int): Order of the Newton-Cotes rule (1 to higher orders).
+        
+    Returns:
+        weights (array-like): The corresponding weights for the given order.
+    """
+   
+    if order == 1:  # Trapezoidal Rule (order 1)
+        if avoid_edges:
+            x = np.linspace(-1, 1, N+2)
+            x = x[1:-1]
+        else:
+            x = np.linspace(-1, 1, N)
+        h = x[1] - x[0]  # uniform grid spacing
+        
+        w = np.zeros(N)
+        w[0] = h / 2
+        w[-1] = h / 2
+        w[1:-1] = h
+    
+    elif order == 2:  # Simpson's Rule (order 2)
+        # Need to make sure that N is made odd
+        N -= 1 - (N % 2)
+        if avoid_edges:
+            x = np.linspace(-1, 1, N+2)
+            x = x[1:-1]
+        else:
+            x = np.linspace(-1, 1, N)
+        h = x[1] - x[0]  # uniform grid spacing
+        
+        w = np.zeros(N)
+        w[0] = w[-1] = h / 3
+        w[1:-1:2] = 4 * h / 3  # Odd-index points
+        w[2:-1:2] = 2 * h / 3  # Even-index points
+    
+    elif order == 4:  # Boole's Rule (order 4)
+        # Need to make sure that N is made odd
+        N -= 1 + (N % 4)
+        if avoid_edges:
+            x = np.linspace(-1, 1, N+2)
+            x = x[1:-1]
+        else:
+            x = np.linspace(-1, 1, N)
+        h = x[1] - x[0]  # uniform grid spacing
+
+        w = np.zeros(N)
+        w[0] = w[-1] = 14 * h / 45
+        w[1::2] = 64 * h / 45
+        w[2::4] = 8 * h / 15
+        w[4::4] = 28 * h / 45
+    else:
+        raise ValueError("Only orders 1, 2, and 4 are implemented for uniform grid.")
+    
+    return x, w
+
+# Gauss - Legendre 
+def leggaus(N):
+    # Call leggaus for Gauss-Legendre quadrature from np
+    return leggauss(N)
+
+# Clenshaw - Curtis
+def clenshaw_curtis(n):
+    """
+    Computes a Clenshaw-Curtis quadrature rule without explicit loops. 
+    Adapted https://people.math.sc.edu/Burkardt/py_src/quadrule/clenshaw_curtis_compute.py.
+    
+    Parameters:
+        n (int): The order of the rule.
+    
+    Returns:
+        x (ndarray): The abscissas.
+        w (ndarray): The weights.
+    """
+    if n == 1:
+        # sFor n = 1, return the single point and its weight
+        x = np.zeros(n)
+        w = np.zeros(n)
+        w[0] = 2.0
+        return x, w
+
+    # Calculate the abscissas (nodes)
+    theta = np.pi * np.linspace(0, n - 1, n) / (n - 1)
+    x = np.cos(theta)
+
+    # Initialize the weights
+    w = np.ones(n)
+
+    # Vectorized weight calculation (remove the double loop)
+    j = np.arange(0, (n - 1) // 2)  # j ranges from 0 to (n-1)//2 - 1
+    
+    # Create b: 1.0 for the special case, otherwise 2.0
+    b = np.where(2 * (j + 1) == (n - 1), 1.0, 2.0)
+    
+    # Compute the cosine terms for all i, j
+    cos_terms = np.cos(2 * (j[:, None] + 1) * theta[None, :])  # shape (j.size, n)
+    
+    # Calculate the denominator for each j
+    denominator = 4 * j * (j + 2) + 3  # shape (j.size,)
+    
+    # Update the weights (for all i simultaneously)
+    weight_contribution = np.sum(b[:, None] * cos_terms / denominator[:, None], axis=0)
+    w -= weight_contribution
+
+    # Normalize the weights
+    w[0] /= (n - 1)
+    w[1:n-1] *= 2.0 / (n - 1)
+    w[n-1] /= (n - 1)
+
+    return x, w
+
+## MAPPING ##
+def effect_map(mapping, x_ls, x_rs, scale):
+    # We map the t ∈ [-1, 1] domains into x subdomains, the real domain of the input functions.
+    # Depending on which map is chosen, proceed differently
+    if mapping == "normal":
+        ## Standard simple case: 
+        ## simply uniform map from t ∈ [−1, 1] to x ∈ [x_l, x_r]
+        # Compute map
+        factor = 0.5*(x_rs - x_ls)
+        map = lambda t: x_ls + factor * (t + 1)
+        # The derivative of the map respect to t
+        d_map = lambda t: factor + t*0
+    elif mapping == "sin":
+        ## Sin case: 
+        ## method used by Unalmis in https://doi.org/10.48550/arXiv.2412.01724, where a sine mapping is used 
+        ## to ameliorate the divergence of the integrand near bounce points. The map is from t ∈ [−1, 1] to 
+        ## x ∈ [x_l, x_r] using x = xl + 0.5 (xr - xl) * (1 + sin(πt/2)).
+        # Construct map
+        map = lambda t: x_ls + 0.5*(x_rs - x_ls) * (1 + np.sin(0.5*np.pi*t))
+        # Differentiate map
+        d_map = lambda t: 0.5*(x_rs - x_ls) * 0.5*np.pi * np.cos(0.5*np.pi*t)
+    elif mapping == "takashi":
+        ## Double exponential method: the key of the scheme is to have a regular grid in t ∈ [-scale, scale] 
+        ## and map it to ↦ x using x = 0.5 (x_r + x_l) + 0.5 (x_r - x_l) tanh(π sinh(t) / 2)
+        # Compute map
+        t_max = scale
+        map = lambda t: 0.5*(x_rs + x_ls) + 0.5*(x_rs - x_ls) * np.tanh(0.5 * np.pi * np.sinh(t_max * t))
+        # Differentiate map
+        d_map = lambda t:  0.5*(x_rs - x_ls) * 0.5 * np.pi * t_max * np.cosh(t_max * t) / np.cosh(0.5 * np.pi * np.sinh(t_max * t)) ** 2
+    elif mapping == "exponential_l":
+        ## Single exponential method: the key of the scheme is to have a regular grid in t ∈ [-1, 1] 
+        ## map it to t ↦ t' ∈ [0, scale] and then map it to x = x_r - (x_r - x_l) exp(-t)
+        # Compute map
+        t_max = scale
+        map = lambda t: x_rs + (x_ls - x_rs) * np.exp(-0.5 * scale * (t + 1))
+        # Differentiate map
+        d_map = lambda t:  (x_rs - x_ls) * 0.5 * scale * np.exp(-0.5 * scale * (t + 1))
+    elif mapping == "exponential_r":
+        ## Single exponential method: the key of the scheme is to have a regular grid in t ∈ [-1, 1] 
+        ## map it to t ↦ t' ∈ [0, scale] and then map it to x = x_l - (x_l - x_r) exp(-t'), so now avoid 
+        ## touching the right of the domain
+        # Compute map
+        t_max = scale
+        map = lambda t: x_ls + (x_rs - x_ls) * np.exp(-0.5 * scale * (t + 1))
+        # Differentiate map
+        d_map = lambda t:  (x_ls - x_rs) * 0.5 * scale * np.exp(-0.5 * scale * (t + 1))
+    else:
+        raise Warning("Mapping {} not implemented!".format(mapping))
+    
+    return map, d_map
+
+
+##########
+# OTHERS #
+##########
+# Method interpreter
+def weight_integration(x, method):
+    if method == "trapz":
+        weight = trapezoidal_weights(x)
+    elif method == "simpson":
+        weight = simpsons_weights(x)
+    else:
+        raise Warning("No other discrete method to work on the grid has been implemented!")
+
+    return weight
+
+def trapezoidal_weights(x):
+    """
+    Compute weights for the trapezoidal rule more efficiently.
+    
+    Parameters:
+        x (array-like): Grid points.
+        
+    Returns:
+        weights (array-like): Trapezoidal rule weights.
+    """
+    N = len(x)
+    weights = np.zeros(N)
+
+    # Relevant slices
+    slice1 = slice(1, None)
+    slice2 = slice(None, -1)
+
+    # Differences
+    d = np.diff(x)
+    temp = d / 2.0 
+
+    # Construct weights
+    weights[slice1] += temp
+    weights[slice2] += temp
+
+    return weights
+
+def simpsons_weights(x):
+    """
+    Compute weights for Simpson's rule with non-uniform grid points.
+    
+    Parameters:
+        x (array-like): Grid points (must have an odd number of points).
+        
+    Returns:
+        weights (array-like): Simpson's rule weights.
+    """
+    N = len(x)
+    if (N - 1) % 2 != 0:
+        raise ValueError("Simpson's rule requires an odd number of points (even number of intervals).")
+
+    # Compute intervals
+    h = np.diff(x)
+
+    # Selection of components
+    step = 2
+    slice0 = slice(0, N-2, step)
+    slice1 = slice(1, N-1, step)
+    slice2 = slice(2, N, step)
+
+    # Differences
+    h0 = np.float64(h[slice0])
+    h1 = np.float64(h[slice1])
+    hsum = h0 + h1
+    hprod = h0 * h1
+    h0divh1 = np.true_divide(h0, h1, out=np.zeros_like(h0), where = h1 != 0)
+
+    # Weights
+    weights = np.zeros_like(x)
+
+    weights[slice0] = hsum/6.0 * (2.0 - np.true_divide(1.0, h0divh1,
+                                            out=np.zeros_like(h0divh1),
+                                            where=h0divh1 != 0))
+    weights[slice1] += hsum/6.0 * (hsum * np.true_divide(hsum, hprod,
+                                                    out=np.zeros_like(hsum),
+                                                    where=hprod != 0))
+    weights[slice2] += hsum/6.0 * (2.0 - h0divh1)
+
+    return weights
+
+# def midpoint_weights(x):
+#     """
+#     Compute weights for the midpoint rule with non-uniform grid points (vectorized).
+    
+#     Parameters:
+#         x (array-like): Grid points.
+        
+#     Returns:
+#         weights (array-like): Midpoint rule weights.
+#     """
+#     N = len(x)
+#     if N < 2:
+#         raise ValueError("At least two grid points are required.")
+
+#     # Compute interval widths
+#     dx_left = np.zeros(N)   # Interval widths to the left of each point
+#     dx_right = np.zeros(N)  # Interval widths to the right of each point
+
+#     dx_left[1:] = (x[1:] - x[:-1]) / 2   # Left intervals
+#     dx_right[:-1] = (x[1:] - x[:-1]) / 2  # Right intervals
+
+#     # Combine contributions
+#     weights = dx_left + dx_right
+
+#     return weights
+
+# def check_monotonic_array(x):
+#     assert np.any(np.less(x[1:],x[:-1])), Warning('x array must be monotonically increasing!')
+#     return 0
+
+# def newton_cotes_weights(x, order):
+#     """
+#     Compute the weights for Newton-Cotes quadrature on a non-uniform grid for a given order.
+    
+#     Parameters:
+#         x (array-like): Grid points (non-uniform).
+#         order (int): Order of the Newton-Cotes rule (1 to 4).
+        
+#     Returns:
+#         weights (array-like): The corresponding weights for the given order.
+#     """
+    
+#     # Ensure the order is between 1 and 4, or use the Vermont approach for higher orders
+#     if order < 1:
+#         raise ValueError("Order must be greater than or equal to 1.")
+    
+#     if order == 1:  # Trapezoidal Rule (order 1)
+#         weights[:-1] += dx / 2
+#         weights[1:] += dx / 2
+
+#     elif order == 2:  # Simpson's Rule (order 2)
+#         even_indices = np.arange(0, N - 2, 2)
+#         h0 = dx[even_indices]
+#         h1 = dx[even_indices + 1]
+
+#         weights[even_indices]     += h0 / 6
+#         weights[even_indices + 1] += (h0 + h1) / 3
+#         weights[even_indices + 2] += h1 / 6
+
+#         if N % 2 == 0:  # Handle last interval with trapezoidal rule if needed
+#             weights[-2] += dx[-1] / 2
+#             weights[-1] += dx[-1] / 2
+
+#     elif order == 3:  # 3rd-order Newton-Cotes Rule
+#         indices = np.arange(0, N - 3, 3)
+#         h0 = dx[indices]
+#         h1 = dx[indices + 1]
+#         h2 = dx[indices + 2]
+#         H = h0 + h1 + h2
+
+#         weights[indices]     += H * 3 / 8
+#         weights[indices + 1] += H * 9 / 8
+#         weights[indices + 2] += H * 9 / 8
+#         weights[indices + 3] += H * 3 / 8
+
+#         if N % 3 != 1:  # Handle leftover intervals with lower-order rules
+#             remainder = N % 3
+#             if remainder == 2:  # Use Simpson's rule for last two intervals
+#                 h0 = x[-2] - x[-3]
+#                 h1 = x[-1] - x[-2]
+#                 weights[-3] += h0 / 6
+#                 weights[-2] += (h0 + h1) / 3
+#                 weights[-1] += h1 / 6
+#             elif remainder == 1:  # Use trapezoidal rule for last interval
+#                 weights[-2] += dx[-1] / 2
+#                 weights[-1] += dx[-1] / 2
+
+#     elif order == 4:  # Boole's Rule (order 4)
+#         indices = np.arange(0, N - 4, 4)
+#         h0 = dx[indices]
+#         h1 = dx[indices + 1]
+#         h2 = dx[indices + 2]
+#         h3 = dx[indices + 3]
+#         H = h0 + h1 + h2 + h3
+
+#         weights[indices]     += 7 * H / 90
+#         weights[indices + 1] += 32 * H / 90
+#         weights[indices + 2] += 12 * H / 90
+#         weights[indices + 3] += 32 * H / 90
+#         weights[indices + 4] += 7 * H / 90
+
+#         if N % 4 != 1:  # Handle leftover intervals with lower-order rules
+#             remainder = N % 4
+#             if remainder == 3:  # Use 3rd-order rule for last three intervals
+#                 h0 = x[-3] - x[-4]
+#                 h1 = x[-2] - x[-3]
+#                 h2 = x[-1] - x[-2]
+#                 H = h0 + h1 + h2
+
+#                 weights[-4] += H * 3 / 8
+#                 weights[-3] += H * 9 / 8
+#                 weights[-2] += H * 9 / 8
+#                 weights[-1] += H * 3 / 8
+#             elif remainder == 2:  # Use Simpson's rule for last two intervals
+#                 h0 = x[-2] - x[-3]
+#                 h1 = x[-1] - x[-2]
+#                 weights[-3] += h0 / 6
+#                 weights[-2] += (h0 + h1) / 3
+#                 weights[-1] += h1 / 6
+#             elif remainder == 1:  # Use trapezoidal rule for last interval
+#                 weights[-2] += dx[-1] / 2
+#                 weights[-1] += dx[-1] / 2
+    
+#     elif order > 4:  # For orders higher than 4, use Vermont's method or a similar high-order Newton-Cotes
+#         N = len(x)
+    
+#         # Generate the Vandermonde matrix for the grid points
+#         V = np.vander(x, order+1, increasing=True)
+        
+#         # Right-hand side for the quadrature (unitary function values at grid points)
+#         b = np.zeros(N)
+#         b[0] = 1  # First weight is 1 for the first grid point (this can vary)
+        
+#         # Solve the system V * w = b to find the weights
+#         weights = np.linalg.solve(V, b)
+    
+#     return weights
+  
+def leggauss_lob(N, interior_only=True):
+    """
+    Compute nodes and weights for Lobatto-Gauss-Legendre quadrature.
+
+    Parameters:
+        N (int): Number of nodes (including endpoints).
+
+    Returns:
+        x (numpy array): Quadrature nodes.
+        w (numpy array): Quadrature weights.
+    """
+    N = N + 2 * bool(interior_only)
+    if N < 2:
+        raise ValueError("Number of nodes must be at least 2.")
+
+    # Golub-Welsh algorithm
+    n = np.arange(2, N - 1)
+    x = eigh_tridiagonal(np.zeros(N - 2), np.sqrt((n**2 - 1) / (4 * n**2 - 1)), eigvals_only = True)
+    c0 = np.zeros(N)
+    c0[-1] = 1
+
+    # improve (single multiplicity) roots by one application of Newton
+    c = legder(c0)
+    dy = legval(x=x, c=c)
+    df = legval(x=x, c=legder(c))
+    x -= dy / df
+
+    w = 2 / (N * (N - 1) * legval(x=x, c=c0) ** 2)
+
+    if not interior_only:
+        x = np.hstack([-1.0, x, 1.0])
+        w_end = 2 / (N * (N - 1))
+        w = np.hstack([w_end, w, w_end])
+
+    assert x.size == w.size == N - 2 * bool(interior_only)
+
+    return x, w
+
 
 def main():
     pass
+
 if __name__ == "__main__":
     main()
 
