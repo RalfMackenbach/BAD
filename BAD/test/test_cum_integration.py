@@ -134,13 +134,11 @@ for k_coeff in k_arr:
     start = timeit.default_timer()
     for i in range(N_time):
         gtrapz = cum_bounce_integral_fn(f, h, x_l, x_r, ell, approach = "discrete", features = {"method": "gtrapz"})
-        # gtrapz = cum_bounce_integral_discrete(f(ell), np.ones(N*k_coeff), ell, method = "gtrapz")
     execution_times["gtrapz"].append(timeit.default_timer() - start)
 
     start = timeit.default_timer()
     for i in range(N_time):
         gquadz = cum_bounce_integral_fn(f, h, x_l, x_r, ell, approach = "discrete", features = {"method": "gquadz"})
-        # gtrapz = cum_bounce_integral_discrete(f(ell), np.ones(N*k_coeff), ell, method = "gtrapz")
     execution_times["gquadz"].append(timeit.default_timer() - start)
     # q_d = bounce_integral_discrete(1 - lam*B(ell), np.ones(N), ell, method = "trapz")
     data.append([tak, cg1, cg2, cc, GL, q, q2, q4, q_edge, gtrapz, gquadz])
