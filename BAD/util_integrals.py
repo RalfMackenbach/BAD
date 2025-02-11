@@ -12,18 +12,18 @@ from numpy.polynomial.legendre import legder, legval, leggauss
 ## BOUNCE INTEGRAL ##
 def bounce_integral_discrete(f, h, x, method = "gtrapz"):
     r"""
-    ``bounce_integral`` does the bounce integral
+    ``bounce_integral_discrete`` computes the bounce integral
     .. math::
-       \int \frac{h(x)}{\sqrt{f(x)}} \mathrm{d}x.
-    Can be done by either quad if is_func=True, or
-    gtrapz if is_func=False. When is_func=True 
-    both f and h need to be functions. Otherwise
-    they should be arrays. sinhtanh can furthermore
-    be set to either True of False to use sinhtanh
-    quadrature methods (only is is_func=True).
-     Args:
-        f: function or arrays containing f
-        h: function or arrays containing h
+       ∫_{𝑥ₗ}^{𝑥ᵣ} h(x) / √f(x) dx
+    using discrete integration methods. The available methods are:
+    - "gtrapz": Generalized trapezoidal rule.
+    - "gquadz": Quadratic interpolation method.
+    
+    Args:
+        f: array containing values of the function f(x).
+        h: array containing values of the function h(x).
+        x: array containing the grid points.
+        method: string specifying the integration method ("gtrapz" or "gquadz").
     """
     if method == "gtrapz":
         # Compute integral
@@ -39,7 +39,7 @@ def bounce_integral_discrete(f, h, x, method = "gtrapz"):
 ## CUMULATIVE INTEGRAL ##
 def cum_bounce_integral_discrete(f, h, x, method = "gtrapz"):
     r"""
-    ``bounce_integral`` does the bounce integral
+    ``cum_bounce_integal_discrete`` does the bounce integral
     .. math::
        \int \frac{h(x)}{\sqrt{f(x)}} \mathrm{d}x.
     Can be done by either quad if is_func=True, or
