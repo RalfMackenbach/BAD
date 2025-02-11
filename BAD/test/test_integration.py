@@ -62,6 +62,7 @@ execution_times = {
     "q2": [],
     "q4": [],
     "gtrapz": [],
+    "gquadz": []
 }
 anal = ellipk(k*k)
 for N in N_arr:
@@ -103,13 +104,18 @@ for N in N_arr:
     start = timeit.default_timer()
     gtrapz = bounce_integral_discrete(f(ell), np.ones(N), ell, method = "gtrapz")
     execution_times["gtrapz"].append(timeit.default_timer() - start)
-    # q_d = bounce_integral_discrete(1 - lam*B(ell), np.ones(N), ell, method = "trapz")
-    data.append([tak, cg1, cg2, cc, GL, q, q2, q4, gtrapz])
-    print(anal,tak, cg1, cg2, cc, GL, q, q2, q4, gtrapz)
+
+    start = timeit.default_timer()
+    gquadz = bounce_integral_discrete(f(ell), np.ones(N), ell, method = "gquadz")
+    execution_times["gquadz"].append(timeit.default_timer() - start)
+
+
+    data.append([tak, cg1, cg2, cc, GL, q, q2, q4, gtrapz, gquadz])
+    print(anal,tak, cg1, cg2, cc, GL, q, q2, q4, gtrapz, gquadz)
 
 quad_quad = quad(lambda x: h(x)/np.sqrt(f(x)), x_l, x_r, epsrel=1e-12)
 
-names = ["Takashi", "CG1-sin", "CG2-sin", "CC-sin", "GL-sin", "Trapz-sin", "Simpson-sin", "Boole-sin", "gtrapz"]
+names = ["Takashi", "CG1-sin", "CG2-sin", "CC-sin", "GL-sin", "Trapz-sin", "Simpson-sin", "Boole-sin", "gtrapz", "gquadz"]
 data = np.array(data)
 for j in range(np.shape(data)[1]):
     plt.plot(N_arr, np.abs(data[:,j]-anal), '.-', label = names[j])

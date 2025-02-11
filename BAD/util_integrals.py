@@ -215,14 +215,14 @@ def _gquadz_definite(af,bf,cf,ah,bh,ch,xi,xj):
         x:  x value at which the indefinite integral is evaluated
     """
     # allow complex numbers, double precision
-    af = np.complex_(af)
-    bf = np.complex_(bf)
-    cf = np.complex_(cf)
-    ah = np.complex_(ah)
-    bh = np.complex_(bh)
-    ch = np.complex_(ch)
-    xi = np.complex_(xi)
-    xj = np.complex_(xj)
+    af = np.complex128(af)
+    bf = np.complex128(bf)
+    cf = np.complex128(cf)
+    ah = np.complex128(ah)
+    bh = np.complex128(bh)
+    ch = np.complex128(ch)
+    xi = np.complex128(xi)
+    xj = np.complex128(xj)
     
 
     term_1 = -2*np.sqrt(af)*np.sqrt(cf + xi*(af*xi + bf)) + 2*af*xi + bf

@@ -1,5 +1,5 @@
 import numpy as np
-from .util_integrals import bounce_integral_discrete, cum_bounce_integral_discrete, bounce_integral_fn, cum_bounce_integral_fn
+from BAD.util_integrals import bounce_integral_discrete, cum_bounce_integral_discrete, bounce_integral_fn, cum_bounce_integral_fn
 
 def bounce_integral(f, h, x_l = None, x_r = None, x = None, N = 100, mode = "fast"):
     """
@@ -36,7 +36,7 @@ def bounce_integral(f, h, x_l = None, x_r = None, x = None, N = 100, mode = "fas
             Specifies the integration method to use:
             - "fast": aimed at speed, using less computationally expensive methods (e.g., `takashi` method for function, 'gtrapz' 
             for discrete case).
-            - "accurate": aimed at accuracy, using methods like Clenshaw-Curtis with sine mapping.
+            - "accurate": aimed at accuracy, uses Clenshaw-Curtis with sine mapping for functions and 'gquadz' for discrete case.
     
     Returns:
         res (numpy.ndarray): 
@@ -72,10 +72,11 @@ def bounce_integral(f, h, x_l = None, x_r = None, x = None, N = 100, mode = "fas
         ##################
         # Interpretation for typical range of N = 50 - 300
         if mode == "fast":
-            # Single thing implemented
             res = bounce_integral_discrete(f, h, x, method = "gtrapz")
+        elif mode == "accurate":
+            res = bounce_integral_discrete(f, h, x, method = "gquadz")
         else:
-            raise Warning("Provided mode is not recognised. Only 'fast' is included.")
+            raise Warning("Provided mode is not recognised. Only 'fast' & 'accurate' are included.")
         # Need to include some other form to deal with this, potentially interpolating and doing one of the others
         
     return res
@@ -116,7 +117,7 @@ def cum_bounce_integral(f, h, x_l = None, x_r = None, x = None, N = 100, mode = 
         mode (str, optional, default="fast"): 
             Specifies the integration method to use:
             - "fast": faster implemented algorithm, using less computationally expensive methods (based on `gtrapz`).
-            - "accurate": aimed at accuracy, using methods like Clenshaw-Curtis with sine mapping.
+            - "accurate": aimed at accuracy, uses Clenshaw-Curtis with sine mapping for functions and 'gquadz' for discrete case.
     
     Returns:
         x (numpy.ndarray): 
@@ -154,10 +155,11 @@ def cum_bounce_integral(f, h, x_l = None, x_r = None, x = None, N = 100, mode = 
         ##################
         # Interpretation for typical range of N = 50 - 300
         if mode == "fast":
-            # Single thing implemented
             x, res = cum_bounce_integral_discrete(f, h, x, method = "gtrapz")
+        elif mode == "accurate":
+            x, res = cum_bounce_integral_discrete(f, h, x, method = "gquadz")
         else:
-            raise Warning("Provided mode is not recognised. Only 'fast' is included.")
+            raise Warning("Provided mode is not recognised. Only 'fast' & 'accurate' are included.")
         # Need to include some other form to deal with this, potentially interpolating and doing one of the others
         
     return x, res
