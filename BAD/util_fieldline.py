@@ -298,12 +298,15 @@ def construct_well_func(z, z_pair):
         
 
 
-def refine_roots(f_func,z_init):
+def refine_roots(f_func,z_init,eps=1e-5):
     # refine the roots of a function f_func(z) using scipy.optimize.root_scalar
     # z_init is the initial guess for the roots
     # returns the refined roots
     tol = 1e-16
-    res = spo.root_scalar(f_func, x0=z_init, xtol=tol)
+    # Compute x1 for root_scalar (so that compatible with older versions of scipy)
+    p1 = z_init * (1 + eps)
+    p1 += (eps if p1 >= 0 else -eps)
+    res = spo.root_scalar(f_func, x0=z_init, x1 = p1, xtol=tol)
     return res.root
 
 
@@ -321,7 +324,8 @@ def make_well_given_bp(B, z, z_bp, boundary='periodic'):
         # refine the bounce-points
         f_func = lambda z: 1.0 - lam * B(z)
         for idx, z_init in np.ndenumerate(z_pairs):
-            z_pairs[idx] = refine_roots(f_func, z_init)
+            if not np.isnan(z_init):
+                z_pairs[idx] = refine_roots(f_func, z_init)
         # apply boundary conditions
         z_pairs, df_pairs = apply_boundary_condition(f_arr, z, z_pairs, df_pairs, bc=boundary)
 
@@ -377,7 +381,8 @@ def func_bounce_wells_wrapper(f_func, h_func, z, boundary='periodic'):
     z_pairs, df_pairs = bounce_points_f(f_arr, z)
     # refine the bounce-points 
     for idx, z_init in np.ndenumerate(z_pairs):
-        z_pairs[idx] = refine_roots(f_func, z_init)
+        if not np.isnan(z_init):
+            z_pairs[idx] = refine_roots(f_func, z_init)
     # apply boundary conditions
     z_pairs, df_pairs = apply_boundary_condition(f_arr, z, z_pairs, df_pairs, bc=boundary)
     # construct the bounce-wells
