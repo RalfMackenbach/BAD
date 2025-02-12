@@ -1,4 +1,4 @@
-from BAD.bounce_fieldline import *
+from BAD.bounce_fieldline import bounce_int_lambda, bounce_int_zbp
 import numpy as np
 
 def B(z):
@@ -11,7 +11,7 @@ z = np.linspace(-2*np.pi, +2*np.pi, 3001)
 
 lam_val = 1.4
 z_bp = -np.pi/2 - np.pi
-bc = 'periodic'
+bc = 'wall'
 
 B_z = B(z)
 h_z = h(z)
