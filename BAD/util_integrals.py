@@ -333,7 +333,19 @@ def bounce_integral_fn(f, h, x_l, x_r, N = 100, method = "quad", order = 1, mapp
     x = map(t)
     # Quadrature integral on the t domain:  fun(x(t))  *   dx/dt(t)   *  w(t)
     #                                        function   map derivative  weight
-    res = np.sum(h(x)/np.sqrt(f(x)) * d_map(t) * w)
+    # Compute the terms that do not divide by 0 (other points will be taken to be 0, potentially False near top of wells)
+    integrand = np.zeros_like(x, dtype = float)
+    f_arr = f(x)
+    non_zero_flag = f_arr > 0
+    integrand[non_zero_flag] =  h(x[non_zero_flag])/np.sqrt(f_arr[non_zero_flag]) * d_map(t[non_zero_flag]) * w[non_zero_flag]
+    # Could do a local expansion near the zeros (L'Hopital rule) for a better approximation
+    # zero_flag = ~non_zero_flag
+    # eps = 1e-10 # Arbitrary small value in the domian [-1,1]
+    # integrand[zero_flag] = h(x[zero_flag])/np.sqrt(f(map(t[zero_flag] - np.sign(t[zero_flag])*eps))) * \
+    #     d_map(t[zero_flag] - np.sign(t[zero_flag])*eps) * w[zero_flag]
+    
+    # Quadrature
+    res = np.sum(integrand)
     
     return res
 
