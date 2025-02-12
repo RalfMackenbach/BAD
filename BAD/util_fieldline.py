@@ -303,8 +303,11 @@ def refine_roots(f_func,z_init):
     # z_init is the initial guess for the roots
     # returns the refined roots
     tol = 1e-16
-    res = spo.root_scalar(f_func, x0=z_init, xtol=tol)
-    return res.root
+    if np.isnan(z_init):
+        return np.nan
+    else:
+        res = spo.root_scalar(f_func, x0=z_init, xtol=tol)
+        return res.root
 
 
 
