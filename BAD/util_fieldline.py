@@ -351,7 +351,10 @@ def make_well_given_bp(B, z, z_bp, boundary='periodic'):
 
 
 
-def linear_bounce_wells_wrapper(f_arr, h_arr, z_arr, boundary='periodic'):
+def linear_bounce_wells_wrapper(f_arr, h_arr_list, z_arr, boundary='periodic'):
+    # check if h_arr is a list, if not make it a list
+    if not isinstance(h_arr_list, list):
+        h_arr_list = [h_arr_list]
     # given an array of f_arr = 1 - lam * B(z) and z_arr
     # find the bounce-points and construct the bounce-wells
     # first find the bounce-points
@@ -361,23 +364,28 @@ def linear_bounce_wells_wrapper(f_arr, h_arr, z_arr, boundary='periodic'):
     # construct the bounce-wells
     z_wells = []
     f_wells = []
-    h_wells = []
+    h_wells_list = [[] for h_arr in h_arr_list]
+
+
+    # construct the wells
+    # This is doing a lot of work, but it is the most general
     for z_pair in z_pairs:
-        z_well, f_well, h_well = construct_well_arr(f_arr, h_arr, z_arr, z_pair)
-        z_wells.append(z_well)
-        f_wells.append(f_well)
-        h_wells.append(h_well)
+        z_grid, f_grid, _ = construct_well_arr(f_arr, h_arr_list[0], z_arr, z_pair)
+        z_wells.append(z_grid)
+        f_wells.append(f_grid)
+        for i, h_grid in enumerate(h_arr_list):
+            _, _, h_grid = construct_well_arr(f_arr, h_grid, z_arr, z_pair)
+            h_wells_list[i].append(h_grid)
 
-    return z_wells, f_wells, h_wells
+    return z_wells, f_wells, h_wells_list
 
 
 
-def func_bounce_wells_wrapper(f_func, h_func, z, boundary='periodic'):
+def func_bounce_wells_wrapper(f_func, z, boundary='periodic'):
     # given a function f_func = 1 - lam * B(z) and z
     # find the bounce-points and construct the bounce-wells
     # first find the bounce-points
     f_arr = f_func(z)
-    h_arr = h_func(z)
     z_pairs, df_pairs = bounce_points_f(f_arr, z)
     # refine the bounce-points 
     for idx, z_init in np.ndenumerate(z_pairs):
