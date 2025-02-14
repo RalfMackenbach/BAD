@@ -302,7 +302,7 @@ def refine_roots(f_func,z_init,eps=1e-5):
     # refine the roots of a function f_func(z) using scipy.optimize.root_scalar
     # z_init is the initial guess for the roots
     # returns the refined roots
-    tol = 1e-16
+    tol = 1e-12
     # Compute x1 for root_scalar (so that compatible with older versions of scipy)
     p1 = z_init * (1 + eps)
     p1 += (eps if p1 >= 0 else -eps)
