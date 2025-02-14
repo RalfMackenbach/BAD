@@ -196,7 +196,7 @@ def _cum_gquadz(x, f, h):
 
     return integral
 
-def _gquadz_definite(af,bf,cf,ah,bh,ch,xi,xj):
+def _gquadz_definite(af,bf,cf,ah,bh,ch,xi,xj, test = False):
     r"""
     ``gquadz_definite`` is the definite integral of
     .. math::
@@ -224,23 +224,49 @@ def _gquadz_definite(af,bf,cf,ah,bh,ch,xi,xj):
     xi = np.complex128(xi)
     xj = np.complex128(xj)
     
-
     term_1 = -2*np.sqrt(af)*np.sqrt(cf + xi*(af*xi + bf)) + 2*af*xi + bf
-    arg_1 = np.angle(term_1)
     term_2 = -2*np.sqrt(af)*np.sqrt(cf + xj*(af*xj + bf)) + 2*af*xj + bf
-    arg_2 = np.angle(term_2)
-    num_log = (-8*af**2*ch + 4*af*ah*cf + 4*af*bf*bh - 3*ah*bf**2)*(-1.j*(arg_1-arg_2)-np.log(np.abs(term_1))+ np.log(np.abs(term_2)))
-    log_terms = np.where(np.abs(af) < 1e-7, np.zeros(len(af)), num_log/(8*af**2.5))
-    
+    num_log = (-8*af**2*ch + 4*af*ah*cf + 4*af*bf*bh - 3*ah*bf**2)*np.log(term_2/term_1)
+    log_terms = np.where(np.abs(af) < 1e-4, np.zeros(len(af)), num_log/(8*af**2.5))
+
     num_sqrt = (-(2*np.sqrt(af)*np.sqrt(cf + xi*(af*xi + bf))*(2*af*ah*xi + 4*af*bh - 3*ah*bf)) \
-         + (2*np.sqrt(af)*np.sqrt(cf + xj*(af*xj + bf))*(2*af*ah*xj + 4*af*bh - 3*ah*bf)))
+        + (2*np.sqrt(af)*np.sqrt(cf + xj*(af*xj + bf))*(2*af*ah*xj + 4*af*bh - 3*ah*bf)))
     alt = (16 *np.sqrt(cf + bf*xj)*(8*ah*cf**2 - 2*bf*cf*(5*bh + 2*ah*xj) + bf**2*(15*ch + xj*(5*bh + 3*ah*xj))))/(120* bf**3) - \
-          (16 *np.sqrt(cf + bf*xi)*(8*ah*cf**2 - 2*bf*cf*(5*bh + 2*ah*xi) + bf**2*(15*ch + xi*(5*bh + 3*ah*xi))))/(120* bf**3)
-    sqrt_terms = np.where(np.abs(af) < 1e-7, alt, num_sqrt/(8*af**2.5))
+        (16 *np.sqrt(cf + bf*xi)*(8*ah*cf**2 - 2*bf*cf*(5*bh + 2*ah*xi) + bf**2*(15*ch + xi*(5*bh + 3*ah*xi))))/(120* bf**3)
+    sqrt_terms = np.where(np.abs(af) < 1e-4, alt, num_sqrt/(8*af**2.5))
 
-    tot = log_terms + sqrt_terms
+    tot = log_terms + sqrt_terms   
 
+    if test:
+        if np.abs(np.imag(tot)).max() > 1e-3:
+            assess_gquadz_definite(af,bf,cf,ah,bh,ch,xi,xj,term_1,term_2,tot)
+        
     return np.real(tot)
+
+def assess_gquadz_definite(af,bf,cf,ah,bh,ch,xi,xj,term_1,term_2,tot):
+    """
+    Assess the gquadz_definite function.  
+    """
+    import matplotlib.pyplot as plt
+    plt.figure()
+    val_1 = -1.j*(arg_1-arg_2)-np.log(np.abs(term_1)) + np.log(np.abs(term_2))
+    val_2 = np.log(term_2/term_1)
+    arg_1 = np.angle(val_1); arg_2 = np.angle(val_2)
+    plt.plot(arg_1)
+    plt.plot(arg_2)
+    plt.legend()
+    
+    plt.figure()
+    plt.plot(af, label = "af"); plt.plot(bf, label = "bf"); plt.plot(cf, label = "cf")
+    plt.plot(ah, label = "ah"); plt.plot(bh, label = "bh"); plt.plot(ch, label = "ch")
+    plt.plot(xi, label = "xi"); plt.plot(xj, label = "xj")
+    plt.legend()
+
+    plt.figure()
+    plt.plot(np.real(tot), label = "real"); plt.plot(np.imag(tot), label = "imag")
+    plt.legend()
+
+    plt.show()
 
 def _get_abc(f1,f2,f3,x1,x2,x3):
     r"""

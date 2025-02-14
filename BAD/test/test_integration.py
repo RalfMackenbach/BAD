@@ -11,45 +11,29 @@ rc('font',**{'family':'serif','serif':['Computer Modern Serif'], 'size': 16})
 rc('text', usetex=True)
 
 
-def exact_bounce_time(Delta, lam_grid):
+def B(z):
+    return 1.0 - 0.5 * np.cos(z)
+
+def h(z):
+    return np.ones_like(z)
+
+def exact_bounce_time(lam_grid, Delta = 0.5):
     # k parameter
     k = np.sqrt(0.5*(1-lam_grid*(1-Delta))/lam_grid/Delta)
 
     # Bounce time
-    tb = 2/np.pi * np.sqrt(2/lam_grid/Delta) * ellipk(k*k)
+    tb = 2 * np.sqrt(2/lam_grid/Delta) * ellipk(k*k)
 
-    return tb
+    return tb    
 
-# # B field
-# Delta = 0.1
-# def B(x, derivative = 0):
-#     if derivative == 0:
-#         return 1 - Delta * np.cos(np.pi * x)
-#     elif derivative == 1:
-#         return Delta * np.pi * np.sin(np.pi * x)
-#     if derivative == 2:
-#         return Delta *np.pi*np.pi * np.cos(np.pi * x)
-#     if derivative == 3:
-#         return -Delta * np.pi*np.pi*np.pi * np.sin(np.pi * x)
-#     else:
-#         raise ValueError('Invalid derivative specified. Note that only up to 3rd derivative is implemented!')
-
-# ## DATA ##
-# B_max = 1 + Delta
-# B_min = 1 - Delta
-
-# lam = 1.0
-# x_l = -0.5
-# x_r = 0.5
-
-k = 0.99
-x_l = 0
-x_r = 0.5*np.pi
+lam = 0.7
+x_l = -np.arccos((1-1/lam)/0.5)
+x_r = -x_l
 h = lambda x: 1 + 0*x
-f = lambda x: 1 - k*k * np.sin(x)**2
+f = lambda x: 1 - lam * B(x)
 
 ## TRY ##
-N_arr = np.linspace(10, 1000, 50, dtype=int)
+N_arr = np.linspace(10, 1000, 51, dtype=int)
 data = []
 # Create a dictionary to store the execution times
 execution_times = {
@@ -64,10 +48,10 @@ execution_times = {
     "gtrapz": [],
     "gquadz": []
 }
-anal = ellipk(k*k)
+anal = exact_bounce_time(lam)
 for N in N_arr:
     start = timeit.default_timer()
-    tak = bounce_integral_fn(f, h, x_l=x_l, x_r=x_r, N=N, method="quad", order=1, mapping="takashi", scale=3.0)
+    tak = bounce_integral_fn(f, h, x_l=x_l, x_r=x_r, N=N, method="quad", order=1, mapping="takashi", scale=4.0)
     execution_times["tak"].append(timeit.default_timer() - start)
 
     start = timeit.default_timer()

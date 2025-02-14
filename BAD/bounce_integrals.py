@@ -36,7 +36,7 @@ def bounce_integral(f, h, x_l = None, x_r = None, x = None, N = 100, mode = "fas
             Specifies the integration method to use:
             - "fast": aimed at speed, using less computationally expensive methods (e.g., `takashi` method for function, 'gtrapz' 
             for discrete case).
-            - "accurate": aimed at accuracy, uses Clenshaw-Curtis with sine mapping for functions and 'gquadz' for discrete case.
+            - "accurate": aimed at accuracy, uses Gauss-Legendre with sine mapping for functions and 'gquadz' for discrete case.
     
     Returns:
         res (numpy.ndarray): 
@@ -58,12 +58,12 @@ def bounce_integral(f, h, x_l = None, x_r = None, x = None, N = 100, mode = "fas
         ##################
         # Interpretation for typical range of N = 50 - 300
         if mode == "accurate":
-            # The most accurate appears to be Clenshaw-Curtis with a sine mapping (tested for elliptic-like integrals)
-            res = bounce_integral_fn(f, h, x_l, x_r, N = N, method = "clenshaw", mapping = "sin")
+            # The most accurate appears to be Gauss-Lagendre with a sine mapping (tested for elliptic-like integrals)
+            res = bounce_integral_fn(f, h, x_l, x_r, N = N, method = "GL", mapping = "sin")
         elif mode == "fast":
             # Sacrificing some accuracy (still good) but executing faster (especially at larger N), the best appears to
             # be Takshi (double-exponential) method
-            res = bounce_integral_fn(f, h, x_l, x_r, N = N, method = "quad", order = 1, mapping = "takashi")
+            res = bounce_integral_fn(f, h, x_l, x_r, N = N, method = "quad", order = 1, mapping = "takashi", scale = 4.0)
         else:
             raise Warning("Provided mode is not recognised. Only 'fast' and 'accurate' are included.")
     else:
