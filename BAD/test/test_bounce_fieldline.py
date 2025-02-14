@@ -15,24 +15,24 @@ def t_bounce_exact(lam, a=0.5):
     # define integrand
     integrand = lambda z: 1/np.abs(1.0-lam*(1.0-a*np.cos(z)))**0.5
     # compute integral
-    integral = quad(integrand, -bounce_point, bounce_point, epsabs=1e-10, epsrel=1e-10, limit=1000)[0]
+    integral = quad(integrand, -bounce_point, bounce_point, epsabs=1e-15, epsrel=1e-15, limit=1000)[0]
     return integral
 
     
     
 
 
-z = np.linspace(-2*np.pi, +2*np.pi, 30001)
+z = np.linspace(-2*np.pi, +2*np.pi, 303)
 
-lam_val = 0.7
+lam_val = 1.3
 z_bp = np.arccos((-1.0+lam_val)/(0.5*lam_val)) - 2*np.pi
-bc = 'periodic'
-int_mode = 'fast'
+bc = 'wall'
+int_mode = 'accurate'
 
 B_z = B(z)
 h_z = h(z)
 
-func_mult = 1.0
+func_mult = 2.0
 
 h_z = [h_z, func_mult*h_z]
 

@@ -1,5 +1,6 @@
 from BAD.util_fieldline import *
 from BAD.bounce_integrals import *
+from scipy.interpolate import interp1d
 
 
 def bounce_int_lambda(B, h, z, lam, mode='fast', boundary_condition='periodic'):
@@ -32,6 +33,30 @@ def bounce_int_lambda(B, h, z, lam, mode='fast', boundary_condition='periodic'):
     elif isinstance(B, np.ndarray) and all([isinstance(h_i, np.ndarray) for h_i in h]):
         f = 1 - lam * B
         z_wells, f_wells, hs_wells = linear_bounce_wells_wrapper(f, h, z, boundary=boundary_condition)
+        if mode == 'accurate':
+            # refine the roots using quadratic interpolation
+            f_quad = interp1d(z, f, kind='quadratic')
+            h_quad = [interp1d(z, h_i, kind='quadratic') for h_i in h]
+            # loop over bounce points
+            for i, z_well in enumerate(z_wells):
+                z_left = z_well[0][0]
+                z_right = z_well[-1][-1]
+                # refine these bounce points
+                if z_left != z[0] and z_left != z[-1]:
+                    z_wells[i][0][0] = refine_roots(f_quad, z_left)
+                    for j, h_quad_i in enumerate(h_quad):
+                        hs_wells[j][i][0][0] = h_quad_i(z_wells[i][0][0])
+                if z_right != z[0] and z_right != z[-1]:
+                    z_wells[i][-1][-1] = refine_roots(f_quad, z_right)
+                    for j, h_quad_i in enumerate(h_quad):
+                        hs_wells[j][i][-1][-1] = h_quad_i(z_wells[i][-1][-1])
+
+
+            
+
+            
+                
+
         # make array to store integrals (len(z_wells)xlen(h))
         integrals = np.zeros((len(z_wells), len(h)))
         for idx, _ in np.ndenumerate(integrals):
@@ -93,6 +118,22 @@ def bounce_int_zbp(B, h, z, zbp, mode='fast', boundary_condition='periodic'):
         for i, h_grid in enumerate(h_arr):
             _, _, h_grid = construct_well_arr(f_arr, h_grid, z, z_pair)
             h_wells.append(h_grid)
+
+        if mode == 'accurate':
+            # refine the roots using quadratic interpolation
+            f_quad = interp1d(z, f_arr, kind='quadratic')
+            h_quad = [interp1d(z, h_i, kind='quadratic') for h_i in h_arr]
+            # refine these bounce points
+            z_left = z_well[0][0]
+            z_right = z_well[-1][-1]
+            if z_left != z[0] and z_left != z[-1]:
+                z_well[0][0] = refine_roots(f_quad, z_left)
+                for j, h_quad_i in enumerate(h_quad):
+                    h_wells[j][0][0] = h_quad_i(z_well[0][0])
+            if z_right != z[0] and z_right != z[-1]:
+                z_well[-1][-1] = refine_roots(f_quad, z_right)
+                for j, h_quad_i in enumerate(h_quad):
+                    h_wells[j][-1][-1] = h_quad_i(z_well[-1][-1])
 
             
         # make array to store integrals (len(z_well)xlen(h))
