@@ -22,7 +22,7 @@ def t_bounce_exact(lam, a=0.5):
     
 
 
-z = np.linspace(-2*np.pi, +2*np.pi, 303)
+z = np.linspace(-2*np.pi, +2*np.pi, 2002)
 
 lam_val = 1.3
 z_bp = np.arccos((-1.0+lam_val)/(0.5*lam_val)) - 2*np.pi

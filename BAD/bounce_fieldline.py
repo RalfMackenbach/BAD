@@ -146,6 +146,8 @@ def bounce_int_zbp(B, h, z, zbp, mode='fast', boundary_condition='periodic'):
 
         z_well_dict = [z_well[0][0], z_well[-1][-1]]
 
+    else:
+        raise ValueError('B and h must be both functions or arrays')
 
     # construct dictionary
     res_dict = {}
