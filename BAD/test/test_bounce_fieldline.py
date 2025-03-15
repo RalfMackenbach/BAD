@@ -1,4 +1,4 @@
-from BAD.bounce_fieldline import bounce_int_lambda, bounce_int_zbp
+from BAD.bounce_fieldline import bounce_int_lambda, bounce_int_zbp, bounce_integral_wrapper
 import numpy as np
 from scipy.special import ellipk
 from scipy.integrate import quad
@@ -59,3 +59,14 @@ dict = bounce_int_zbp(B_z, h_z, z, z_bp, mode=int_mode, boundary_condition=bc)
 print(dict)
 print('Diff:', np.asarray(dict['integrals']) - t_bounce_exact(lam_val))
 print('')
+
+print('Testing legacy bounce_integral_wrapper') # bounce_integral_wrapper(f_arr,h_arr,x_arr,is_func=False,return_roots=True)
+f_func = lambda z: 1.0 - lam_val * B(z)
+f_z = f_func(z)
+h_z = h(z)
+integ, z_wells = bounce_integral_wrapper(f_func, h, z, is_func=True, return_roots=True)
+print(integ)
+print(z_wells)
+integ, z_wells = bounce_integral_wrapper(f_z, h_z, z, is_func=False, return_roots=True)
+print(integ)
+print(z_wells)

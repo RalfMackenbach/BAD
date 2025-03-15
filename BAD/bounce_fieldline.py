@@ -156,3 +156,33 @@ def bounce_int_zbp(B, h, z, zbp, mode='fast', boundary_condition='periodic'):
     res_dict['lambda'] = lam
 
     return res_dict
+
+
+# legacy version of the bounce integral wrapper
+def bounce_integral_wrapper(f_arr,h_arr,x_arr,is_func=False,return_roots=True):
+    if is_func:
+        z_wells = func_bounce_wells_wrapper(f_arr,x_arr)
+        integrals = np.zeros(len(z_wells))
+        for i,z_well in enumerate(z_wells):
+            for z_wp in z_well:
+                integrals[i] += bounce_integral(f_arr,h_arr,x_l=z_wp[0],x_r=z_wp[1])
+    elif not is_func:
+        z_wells,f_wells,hs_wells = linear_bounce_wells_wrapper(f_arr,h_arr,x_arr)
+        hs_wells = hs_wells[0]
+        integrals = np.zeros(len(z_wells))
+        for i,z_well in enumerate(z_wells):
+            f_well = f_wells[i]
+            h_well = hs_wells[i]
+            for z_wp,f_wp,h_wp in zip(z_well,f_well,h_well):
+                integrals[i] += bounce_integral(f_wp,h_wp,x=z_wp)
+
+    else:
+        raise ValueError('is_func must be either True or False')
+
+    # keep only the first and last index of each well
+    z_wells = [[z_well[0][0],z_well[-1][-1]] for z_well in z_wells]
+
+    if return_roots:
+        return integrals,z_wells
+    else:
+        return integrals
