@@ -32,30 +32,47 @@ def bounce_int_lambda(B, h, z, lam, mode='fast', boundary_condition='periodic'):
     # check if B and all h are all arrays
     elif isinstance(B, np.ndarray) and all([isinstance(h_i, np.ndarray) for h_i in h]):
         f = 1 - lam * B
-        z_wells, f_wells, hs_wells = linear_bounce_wells_wrapper(f, h, z, boundary=boundary_condition)
+        z_wells, f_wells = linear_bounce_wells_wrapper(f, z, boundary=boundary_condition)
+
         if mode == 'accurate':
-            # refine the roots using quadratic interpolation
-            f_quad = interp1d(z, f, kind='quadratic')
-            h_quad = [interp1d(z, h_i, kind='quadratic') for h_i in h]
-            # loop over bounce points
-            for i, z_well in enumerate(z_wells):
-                z_left = z_well[0][0]
-                z_right = z_well[-1][-1]
-                # refine these bounce points
-                if z_left != z[0] and z_left != z[-1]:
-                    z_wells[i][0][0] = refine_roots(f_quad, z_left)
-                    for j, h_quad_i in enumerate(h_quad):
-                        hs_wells[j][i][0][0] = h_quad_i(z_wells[i][0][0])
-                if z_right != z[0] and z_right != z[-1]:
-                    z_wells[i][-1][-1] = refine_roots(f_quad, z_right)
-                    for j, h_quad_i in enumerate(h_quad):
-                        hs_wells[j][i][-1][-1] = h_quad_i(z_wells[i][-1][-1])
+            interp_kind = 'quadratic'
+        elif mode == 'fast':
+            interp_kind = 'linear'
+        else:
+            raise ValueError('Mode must be either fast or accurate.')
 
+        # refine the roots using quadratic interpolation
+        f_interp = interp1d(z, f, kind=interp_kind)
+        h_interp = [interp1d(z, h_i, kind=interp_kind) for h_i in h]
+        # construct hs_wells
+        # loop over bounce points
+        for i, z_well in enumerate(z_wells):
+            z_left = z_well[0][0]
+            z_right = z_well[-1][-1]
+            # refine these bounce points
+            if z_left != z[0] and z_left != z[-1]:
+                z_wells[i][0][0] = refine_roots(f_interp, z_left)
+            if z_right != z[0] and z_right != z[-1]:
+                z_wells[i][-1][-1] = refine_roots(f_interp, z_right)
 
-            
+        # construct f_wells using f_interp
+        f_wells = []
+        for z_well in z_wells:
+            f_well = []
+            for z_wp in z_well:
+                f_well.append(f_interp(z_wp))
+            f_wells.append(f_well)
 
-            
-                
+        # construct hs_wells using h_interp
+        hs_wells = []
+        for h_i in h_interp:
+            h_wells = []
+            for z_well in z_wells:
+                h_well = []
+                for z_wp in z_well:
+                    h_well.append(h_i(z_wp))
+                h_wells.append(h_well)
+            hs_wells.append(h_wells)
 
         # make array to store integrals (len(z_wells)xlen(h))
         integrals = np.zeros((len(z_wells), len(h)))
@@ -159,7 +176,7 @@ def bounce_int_zbp(B, h, z, zbp, mode='fast', boundary_condition='periodic'):
 
 
 # legacy version of the bounce integral wrapper
-def bounce_integral_wrapper(f_arr,h_arr,x_arr,is_func=False,return_roots=True):
+def bounce_integral_wrapper(f_arr,h_arr,x_arr,is_func=False,return_roots=True,mode='accurate'):
     if is_func:
         z_wells = func_bounce_wells_wrapper(f_arr,x_arr)
         integrals = np.zeros(len(z_wells))
@@ -167,14 +184,53 @@ def bounce_integral_wrapper(f_arr,h_arr,x_arr,is_func=False,return_roots=True):
             for z_wp in z_well:
                 integrals[i] += bounce_integral(f_arr,h_arr,x_l=z_wp[0],x_r=z_wp[1])
     elif not is_func:
-        z_wells,f_wells,hs_wells = linear_bounce_wells_wrapper(f_arr,h_arr,x_arr)
-        hs_wells = hs_wells[0]
+        z_wells, f_wells = linear_bounce_wells_wrapper(f_arr, x_arr, boundary='periodic')
+
+        if mode == 'accurate':
+            interp_kind = 'quadratic'
+        elif mode == 'fast':
+            interp_kind = 'linear'
+        else:
+            raise ValueError('Mode must be either fast or accurate.')
+
+        # refine the roots using quadratic interpolation
+        f_interp = interp1d(x_arr, f_arr, kind=interp_kind)
+        h_interp = interp1d(x_arr, h_arr, kind=interp_kind)
+        # construct hs_wells
+        # loop over bounce points
+        for i, z_well in enumerate(z_wells):
+            z_left = z_well[0][0]
+            z_right = z_well[-1][-1]
+            # refine these bounce points
+            if z_left != x_arr[0] and z_left != x_arr[-1]:
+                z_wells[i][0][0] = refine_roots(f_interp, z_left)
+            if z_right != x_arr[0] and z_right != x_arr[-1]:
+                z_wells[i][-1][-1] = refine_roots(f_interp, z_right)
+
+        # construct f_wells using f_interp
+        f_wells = []
+        for z_well in z_wells:
+            f_well = []
+            for z_wp in z_well:
+                f_well.append(f_interp(z_wp))
+            f_wells.append(f_well)
+
+        # construct h_wells using h_interp
+        h_wells = []
+        for z_well in z_wells:
+            h_well = []
+            for z_wp in z_well:
+                h_well.append(h_interp(z_wp))
+            h_wells.append(h_well)
+
+        # make array to store integrals (len(z_wells)xlen(h))
         integrals = np.zeros(len(z_wells))
-        for i,z_well in enumerate(z_wells):
-            f_well = f_wells[i]
-            h_well = hs_wells[i]
-            for z_wp,f_wp,h_wp in zip(z_well,f_well,h_well):
-                integrals[i] += bounce_integral(f_wp,h_wp,x=z_wp)
+        for idx, _ in np.ndenumerate(integrals):
+            z_well = z_wells[idx[0]]
+            f_well = f_wells[idx[0]]
+            h_well = h_wells[idx[0]]
+            for z_wp, f_wp, h_wp in zip(z_well, f_well, h_well):
+                integrals[idx] += bounce_integral(f_wp, h_wp, x=z_wp, mode=mode)
 
     else:
         raise ValueError('is_func must be either True or False')
