@@ -1,7 +1,0 @@
-Metadata-Version: 2.2
-Name: BAD
-Version: 0.1.0
-License-File: LICENSE
-Requires-Dist: numpy
-Requires-Dist: scipy
-Dynamic: requires-dist

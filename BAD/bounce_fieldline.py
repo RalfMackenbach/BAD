@@ -4,6 +4,32 @@ from scipy.interpolate import interp1d
 
 
 def bounce_int_lambda(B, h, z, lam, mode='fast', boundary_condition='periodic'):
+    """
+    Compute bounce integrals over all bounce wells for a given lambda.
+
+    Parameters
+    ----------
+    B : function or np.ndarray
+        Magnetic field as a function of z (function) or array on grid z.
+    h : function, np.ndarray, or list of such
+        Function(s) or array(s) to integrate over the bounce well(s).
+    z : np.ndarray
+        Grid points along the field line.
+    lam : float
+        Lambda parameter (pitch angle).
+    mode : str, optional
+        'fast' (default, linear interpolation) or 'accurate' (quadratic interpolation).
+    boundary_condition : str, optional
+        'periodic' (default), 'wall', or 'NaN'.
+
+    Returns
+    -------
+    res : dict
+        Dictionary with keys:
+            'z_wells': list of [z_left, z_right] for each well,
+            'integrals': array of integrals for each well and h,
+            'lambda': the input lambda.
+    """
     # check if h is a list, if not make it a list
     if not isinstance(h, list):
         h = [h]
@@ -102,6 +128,32 @@ def bounce_int_lambda(B, h, z, lam, mode='fast', boundary_condition='periodic'):
 
 
 def bounce_int_zbp(B, h, z, zbp, mode='fast', boundary_condition='periodic'):
+    """
+    Compute bounce integrals for a single bounce well defined by a bounce point.
+
+    Parameters
+    ----------
+    B : function or np.ndarray
+        Magnetic field as a function of z (function) or array on grid z.
+    h : function, np.ndarray, or list of such
+        Function(s) or array(s) to integrate over the bounce well.
+    z : np.ndarray
+        Grid points along the field line.
+    zbp : float
+        Bounce point location.
+    mode : str, optional
+        'fast' (default, linear interpolation) or 'accurate' (quadratic interpolation).
+    boundary_condition : str, optional
+        'periodic' (default) or 'dirichlet'.
+
+    Returns
+    -------
+    res_dict : dict
+        Dictionary with keys:
+            'z_well': [z_left, z_right] for the well,
+            'integrals': array of integrals for each h,
+            'lambda': lambda at the bounce point.
+    """
     # check if h is a list, if not make it a list
     if not isinstance(h, list):
         h = [h]
@@ -175,8 +227,33 @@ def bounce_int_zbp(B, h, z, zbp, mode='fast', boundary_condition='periodic'):
     return res_dict
 
 
-# legacy version of the bounce integral wrapper
-def bounce_integral_wrapper(f_arr,h_arr,x_arr,is_func=False,return_roots=True,mode='accurate'):
+# legacy version of the bounce integral wrapper DEPRECATED (used in old BAD versions)
+def bounce_integral_wrapper(f_arr, h_arr, x_arr, is_func=False, return_roots=True, mode='fast'):
+    """
+    Legacy wrapper for bounce integrals (DEPRECATED).
+
+    Parameters
+    ----------
+    f_arr : function or np.ndarray
+        Function or array representing the bounce integrand.
+    h_arr : function or np.ndarray
+        Function or array to integrate.
+    x_arr : np.ndarray
+        Grid points.
+    is_func : bool, optional
+        If True, treat f_arr and h_arr as functions. Default: False.
+    return_roots : bool, optional
+        If True, also return the roots (well boundaries). Default: True.
+    mode : str, optional
+        'fast' (default, linear interpolation) or 'accurate' (quadratic interpolation).
+
+    Returns
+    -------
+    integrals : np.ndarray
+        Array of integrals for each well.
+    z_wells : list, optional
+        List of [z_left, z_right] for each well (if return_roots is True).
+    """
     if is_func:
         z_wells = func_bounce_wells_wrapper(f_arr,x_arr)
         integrals = np.zeros(len(z_wells))
@@ -230,6 +307,11 @@ def bounce_integral_wrapper(f_arr,h_arr,x_arr,is_func=False,return_roots=True,mo
             f_well = f_wells[idx[0]]
             h_well = h_wells[idx[0]]
             for z_wp, f_wp, h_wp in zip(z_well, f_well, h_well):
+                # if any negative values in f_wp smaller than 1e-10, raise an error
+                if np.any(f_wp < -1e-10):
+                    raise ValueError('Negative values in f_wp smaller than 1e-10')
+                # set all negative values in f_wp to 0
+                f_wp[f_wp < 0] = 0
                 integrals[idx] += bounce_integral(f_wp, h_wp, x=z_wp, mode=mode)
 
     else:

@@ -169,7 +169,7 @@ def apply_boundary_condition(f, z, z_pairs, df_pairs, bc='periodic'):
             z_pairs[-1,1] = z[-1]
             df_pairs[-1,1] = -1
     
-    if bc == 'periodic':
+    elif bc == 'periodic':
         # check if the periodic boundary condition introduces a new extremum at an exact zero
         # only possible if the left-most or right-most z corresponds to a bounce-point
         # we check if the left-most z is a bounce-point

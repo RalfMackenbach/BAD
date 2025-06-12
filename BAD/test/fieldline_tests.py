@@ -1,5 +1,5 @@
-from util_fieldline import *
-from bounce_integrals import bounce_integral
+from BAD.util_fieldline import *
+from BAD.bounce_integrals import bounce_integral
 import numpy as np
 import matplotlib.pyplot as plt
 # enable latex rendering
@@ -223,47 +223,4 @@ z_pair_fun = make_well_given_bp(B, z, -z_bp, boundary='wall')
 print(z_pair_arr)
 print(z_pair_fun)
 print(np.abs(z_pair_arr - z_pair_fun))
-###################################################################################
-
-
-
-################################# check array wrapper #####################
-f_arr = 1 - lam_val * B_z
-h_arr = np.ones_like(B_z)
-z_arr = z
-z_wells, f_wells, h_wells = linear_bounce_wells_wrapper(f_arr, h_arr, z_arr, boundary='wall')
-for z_well, f_well, h_well in zip(z_wells, f_wells, h_wells):
-    plt.scatter(z_well, f_well)
-    plt.scatter(z_well, h_well)
-
-# do the integral 
-integrals = []
-for z_well, f_well, h_well in zip(z_wells, f_wells, h_wells):
-    res = 0.0
-    for z_wp, f_wp, h_wp in zip(z_well, f_well, h_well):
-        # do the integral
-        res += bounce_integral(f_wp, h_wp, x = z_wp, mode = 'fast')
-    integrals.append(res)
-
-print('integrals over wells (array):', integrals)
-###################################################################################
-
-
-######################## check function wrapper ############################
-f_func = lambda z: 1.0 - lam_val * B(z)
-h_func = lambda z: 1.0
-z_arr = z
-
-z_wells = func_bounce_wells_wrapper(f_func, h_func, z_arr, boundary='wall')
-
-# do the integral
-integrals = []
-for z_well in z_wells:
-    res = 0.0
-    for z_wp in z_well:
-        # do the integral
-        res += bounce_integral(f_func, h_func, x_l=z_wp[0], x_r=z_wp[1], mode = 'fast')
-    integrals.append(res)
-
-print('integrals over wells (funcs):', integrals)
 ###################################################################################

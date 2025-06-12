@@ -88,7 +88,10 @@ def _gtrapz(x, f, h, tol = 1e-10):
     ans = np.asarray(1/2 * (xj - xi) * (hi + hj)/ np.sqrt(1/2*(fi+fj)))
     # do division, keeping limit whenever fi=fj
     ans = np.divide( 2 * (xj - xi) * (hj * np.sqrt(fj) - hi * np.sqrt(fi))*(fj-fi) - 4/3 * (xj - xi) * (hj - hi) * (np.power(fj,3/2)- np.power(fi,3/2)), np.square(fj-fi),
-                    out=ans,where=np.abs(fi-fj)>tol)       
+                    out=ans,where=np.abs(fi-fj)>tol)
+    # check if any fi or fj are negative
+    if np.any(fi < 0) or np.any(fj < 0):
+        raise ValueError("f(x) must be positive for all x in the integration range.")     
     return np.sum(ans)
 
 def _cum_gtrapz(x, f, h, tol = 1e-10):
