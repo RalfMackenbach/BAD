@@ -12,11 +12,11 @@ All old files are in `old_src`.
 
 
 ### Main idea
-This code contains calculates the bounce-averaged drifts in a magnetic confinement device, tokamak or stellarator. The drifts are calculated using the bounce-averaged integral
+This code calculates the bounce-averaged drifts in a magnetic confinement device, tokamak or stellarator. The drifts are calculated using the bounce-averaging integral
 ```
 I=∫h(x)/sqrt(f(x)) dx
 ```
-where `f(x)` is the normalised parallel energy (`v_{||}^2 = \sqrt{1 - \lambda B}`), and `h(x)` is the function to be bounce-averaged. The integral is evaluated over the regions where `f(x)>0`, which are typically referred to as bounce-wells. The code can handle unstructured and structured data, and can handle both functions and arrays. The code is written in Python, and uses the `scipy` library for numerical integration and root-finding.
+where `f(x)` is the normalised parallel energy (`vpar^2 = 1 - \lambda B`), and `h(x)` is the function to be bounce-averaged. The integral is evaluated over the regions where `f(x)>0`, which are typically referred to as bounce-wells. The code can handle unstructured and structured data, and can handle both functions and arrays. The code is written in Python, and uses the `scipy` library for some numerical integration and root-finding.
 
 
 ### Installation
