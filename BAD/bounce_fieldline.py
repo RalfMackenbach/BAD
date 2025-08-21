@@ -1,0 +1,326 @@
+from BAD.util_fieldline import *
+from BAD.bounce_integrals import *
+from scipy.interpolate import interp1d
+
+
+def bounce_int_lambda(B, h, z, lam, mode='fast', boundary_condition='periodic'):
+    """
+    Compute bounce integrals over all bounce wells for a given lambda.
+
+    Parameters
+    ----------
+    B : function or np.ndarray
+        Magnetic field as a function of z (function) or array on grid z.
+    h : function, np.ndarray, or list of such
+        Function(s) or array(s) to integrate over the bounce well(s).
+    z : np.ndarray
+        Grid points along the field line.
+    lam : float
+        Lambda parameter (pitch angle).
+    mode : str, optional
+        'fast' (default, linear interpolation) or 'accurate' (quadratic interpolation).
+    boundary_condition : str, optional
+        'periodic' (default), 'wall', or 'NaN'.
+
+    Returns
+    -------
+    res : dict
+        Dictionary with keys:
+            'z_wells': list of [z_left, z_right] for each well,
+            'integrals': array of integrals for each well and h,
+            'lambda': the input lambda.
+    """
+    # check if h is a list, if not make it a list
+    if not isinstance(h, list):
+        h = [h]
+    # check if B and all h are functions
+    if callable(B) and all([callable(h_i) for h_i in h]):
+        f_func = lambda z: 1 - lam * B(z)
+        z_wells = func_bounce_wells_wrapper(f_func, z, boundary=boundary_condition)
+        # make array to store integrals (len(z_wells)xlen(h))
+        integrals = np.zeros((len(z_wells), len(h)))
+        for idx, _ in np.ndenumerate(integrals):
+            z_well = z_wells[idx[0]]
+            for z_wp in z_well:
+                integrals[idx] += bounce_integral(f_func, h[idx[1]], x_l=z_wp[0], x_r=z_wp[1], mode=mode)
+        # create dictionary
+        res = {}
+        # to dictionary z_wells can be created by taking the first and last element of each z_well
+        # i.e.
+        # [[[np.float64(-0.9625507478846871), np.float64(0.9625507478846871)]], [[np.float64(5.320634559294899), np.float64(6.283185307179586)], [np.float64(-6.283185307179586), np.float64(-5.320634559294899)]]]
+        # becomes
+        # [[-0.9625507478846871, 0.9625507478846871], [-6.283185307179586, -5.320634559294899]]
+        z_wells_dict = [[z_well[0][0], z_well[-1][1]] for z_well in z_wells]
+        res['z_wells'] = z_wells_dict
+        res['integrals'] = np.asarray(integrals)
+        res['lambda'] = lam
+
+    # check if B and all h are all arrays
+    elif isinstance(B, np.ndarray) and all([isinstance(h_i, np.ndarray) for h_i in h]):
+        f = 1 - lam * B
+        z_wells, f_wells = linear_bounce_wells_wrapper(f, z, boundary=boundary_condition)
+
+        if mode == 'accurate':
+            interp_kind = 'quadratic'
+        elif mode == 'fast':
+            interp_kind = 'linear'
+        else:
+            raise ValueError('Mode must be either fast or accurate.')
+
+        # refine the roots using quadratic interpolation
+        f_interp = interp1d(z, f, kind=interp_kind)
+        h_interp = [interp1d(z, h_i, kind=interp_kind) for h_i in h]
+        # construct hs_wells
+        # loop over bounce points
+        for i, z_well in enumerate(z_wells):
+            z_left = z_well[0][0]
+            z_right = z_well[-1][-1]
+            # refine these bounce points
+            if z_left != z[0] and z_left != z[-1]:
+                z_wells[i][0][0] = refine_roots(f_interp, z_left)
+            if z_right != z[0] and z_right != z[-1]:
+                z_wells[i][-1][-1] = refine_roots(f_interp, z_right)
+
+        # construct f_wells using f_interp
+        f_wells = []
+        for z_well in z_wells:
+            f_well = []
+            for z_wp in z_well:
+                f_well.append(f_interp(z_wp))
+            f_wells.append(f_well)
+
+        # construct hs_wells using h_interp
+        hs_wells = []
+        for h_i in h_interp:
+            h_wells = []
+            for z_well in z_wells:
+                h_well = []
+                for z_wp in z_well:
+                    h_well.append(h_i(z_wp))
+                h_wells.append(h_well)
+            hs_wells.append(h_wells)
+
+        # make array to store integrals (len(z_wells)xlen(h))
+        integrals = np.zeros((len(z_wells), len(h)))
+        for idx, _ in np.ndenumerate(integrals):
+            z_well = z_wells[idx[0]] 
+            f_well = f_wells[idx[0]]
+            h_well = hs_wells[idx[1]][idx[0]]
+            for z_wp, f_wp, h_wp in zip(z_well, f_well, h_well):
+                integrals[idx] += bounce_integral(f_wp, h_wp, x=z_wp, mode=mode)
+        # create dictionary
+        res = {}
+        # to dictionary z_wells can be created by taking the first and last element of each z_well
+        # i.e.
+        # [[array([-0.95140366, -0.83775804, -0.41887902,  0.        ,  0.41887902, 0.83775804,  0.95140366])], [array([5.33178165, 5.44542727, 5.86430629, 6.28318531]), array([-6.28318531, -5.86430629, -5.44542727, -5.33178165])]]
+        # becomes
+        # [[-0.95140366, 0.95140366], [5.33178165, -5.33178165]]
+        z_wells_dict = [[z_well[0][0], z_well[-1][-1]] for z_well in z_wells]
+        res['z_wells'] = z_wells_dict
+        res['integrals'] = integrals
+        res['lambda'] = lam
+
+    else:
+        raise ValueError('B and h must be both functions or arrays')
+    
+    return res
+
+
+
+def bounce_int_zbp(B, h, z, zbp, mode='fast', boundary_condition='periodic'):
+    """
+    Compute bounce integrals for a single bounce well defined by a bounce point.
+
+    Parameters
+    ----------
+    B : function or np.ndarray
+        Magnetic field as a function of z (function) or array on grid z.
+    h : function, np.ndarray, or list of such
+        Function(s) or array(s) to integrate over the bounce well.
+    z : np.ndarray
+        Grid points along the field line.
+    zbp : float
+        Bounce point location.
+    mode : str, optional
+        'fast' (default, linear interpolation) or 'accurate' (quadratic interpolation).
+    boundary_condition : str, optional
+        'periodic' (default) or 'dirichlet'.
+
+    Returns
+    -------
+    res_dict : dict
+        Dictionary with keys:
+            'z_well': [z_left, z_right] for the well,
+            'integrals': array of integrals for each h,
+            'lambda': lambda at the bounce point.
+    """
+    # check if h is a list, if not make it a list
+    if not isinstance(h, list):
+        h = [h]
+    
+    # get the bounce-well
+    z_pair = make_well_given_bp(B, z, zbp, boundary=boundary_condition)
+
+    # check if B and all h are functions
+    if callable(B) and all([callable(h_i) for h_i in h]):
+        lam = 1.0/B(zbp)
+        f_func = lambda z: 1 - lam * B(z)
+        # construct the well
+        z_range = construct_well_func(z, z_pair)
+        # make array to store integrals (len(z_well)xlen(h))
+        integrals = np.zeros(len(h))
+        for idx, h_i in enumerate(h):
+            # loop over well parts
+            for z_wp in z_range:
+                integrals[idx] += bounce_integral(f_func, h_i, x_l=z_wp[0], x_r=z_wp[1], mode=mode)
+
+        z_well_dict = [z_pair[0], z_pair[-1]]
+
+    # check if B and all h are all arrays
+    elif isinstance(B, np.ndarray) and all([isinstance(h_i, np.ndarray) for h_i in h]):
+        lam = 1.0/np.interp(zbp, z, B)
+        # construct the well
+        f_arr = 1 - lam * B
+        h_arr = h
+        h_wells = []
+        z_well, f_well, _ = construct_well_arr(f_arr, h_arr[0], z, z_pair)
+        for i, h_grid in enumerate(h_arr):
+            _, _, h_grid = construct_well_arr(f_arr, h_grid, z, z_pair)
+            h_wells.append(h_grid)
+
+        if mode == 'accurate':
+            # refine the roots using quadratic interpolation
+            f_quad = interp1d(z, f_arr, kind='quadratic')
+            h_quad = [interp1d(z, h_i, kind='quadratic') for h_i in h_arr]
+            # refine these bounce points
+            z_left = z_well[0][0]
+            z_right = z_well[-1][-1]
+            if z_left != z[0] and z_left != z[-1]:
+                z_well[0][0] = refine_roots(f_quad, z_left)
+                for j, h_quad_i in enumerate(h_quad):
+                    h_wells[j][0][0] = h_quad_i(z_well[0][0])
+            if z_right != z[0] and z_right != z[-1]:
+                z_well[-1][-1] = refine_roots(f_quad, z_right)
+                for j, h_quad_i in enumerate(h_quad):
+                    h_wells[j][-1][-1] = h_quad_i(z_well[-1][-1])
+
+            
+        # make array to store integrals (len(z_well)xlen(h))
+        integrals = np.zeros(len(h))
+        # loop over well parts
+        for idx, h_i in enumerate(h):
+            for z_wp, f_wp, h_wp in zip(z_well, f_well, h_wells[idx]):
+                integrals[idx] += bounce_integral(f_wp, h_wp, x=z_wp, mode=mode)
+
+
+        z_well_dict = [z_well[0][0], z_well[-1][-1]]
+
+    else:
+        raise ValueError('B and h must be both functions or arrays')
+
+    # construct dictionary
+    res_dict = {}
+    res_dict['z_well'] = z_well_dict
+    res_dict['integrals'] = integrals
+    res_dict['lambda'] = lam
+
+    return res_dict
+
+
+# legacy version of the bounce integral wrapper DEPRECATED (used in old BAD versions)
+def bounce_integral_wrapper(f_arr, h_arr, x_arr, is_func=False, return_roots=True, mode='fast'):
+    """
+    Legacy wrapper for bounce integrals (DEPRECATED).
+
+    Parameters
+    ----------
+    f_arr : function or np.ndarray
+        Function or array representing the bounce integrand.
+    h_arr : function or np.ndarray
+        Function or array to integrate.
+    x_arr : np.ndarray
+        Grid points.
+    is_func : bool, optional
+        If True, treat f_arr and h_arr as functions. Default: False.
+    return_roots : bool, optional
+        If True, also return the roots (well boundaries). Default: True.
+    mode : str, optional
+        'fast' (default, linear interpolation) or 'accurate' (quadratic interpolation).
+
+    Returns
+    -------
+    integrals : np.ndarray
+        Array of integrals for each well.
+    z_wells : list, optional
+        List of [z_left, z_right] for each well (if return_roots is True).
+    """
+    if is_func:
+        z_wells = func_bounce_wells_wrapper(f_arr,x_arr)
+        integrals = np.zeros(len(z_wells))
+        for i,z_well in enumerate(z_wells):
+            for z_wp in z_well:
+                integrals[i] += bounce_integral(f_arr,h_arr,x_l=z_wp[0],x_r=z_wp[1])
+    elif not is_func:
+        z_wells, f_wells = linear_bounce_wells_wrapper(f_arr, x_arr, boundary='periodic')
+
+        if mode == 'accurate':
+            interp_kind = 'quadratic'
+        elif mode == 'fast':
+            interp_kind = 'linear'
+        else:
+            raise ValueError('Mode must be either fast or accurate.')
+
+        # refine the roots using quadratic interpolation
+        f_interp = interp1d(x_arr, f_arr, kind=interp_kind)
+        h_interp = interp1d(x_arr, h_arr, kind=interp_kind)
+        # construct hs_wells
+        # loop over bounce points
+        for i, z_well in enumerate(z_wells):
+            z_left = z_well[0][0]
+            z_right = z_well[-1][-1]
+            # refine these bounce points
+            if z_left != x_arr[0] and z_left != x_arr[-1]:
+                z_wells[i][0][0] = refine_roots(f_interp, z_left)
+            if z_right != x_arr[0] and z_right != x_arr[-1]:
+                z_wells[i][-1][-1] = refine_roots(f_interp, z_right)
+
+        # construct f_wells using f_interp
+        f_wells = []
+        for z_well in z_wells:
+            f_well = []
+            for z_wp in z_well:
+                f_well.append(f_interp(z_wp))
+            f_wells.append(f_well)
+
+        # construct h_wells using h_interp
+        h_wells = []
+        for z_well in z_wells:
+            h_well = []
+            for z_wp in z_well:
+                h_well.append(h_interp(z_wp))
+            h_wells.append(h_well)
+
+        # make array to store integrals (len(z_wells)xlen(h))
+        integrals = np.zeros(len(z_wells))
+        for idx, _ in np.ndenumerate(integrals):
+            z_well = z_wells[idx[0]]
+            f_well = f_wells[idx[0]]
+            h_well = h_wells[idx[0]]
+            for z_wp, f_wp, h_wp in zip(z_well, f_well, h_well):
+                # if any negative values in f_wp smaller than 1e-10, raise an error
+                if np.any(f_wp < -1e-10):
+                    raise ValueError('Negative values in f_wp smaller than 1e-10')
+                # set all negative values in f_wp to 0
+                f_wp[f_wp < 0] = 0
+                integrals[idx] += bounce_integral(f_wp, h_wp, x=z_wp, mode=mode)
+
+    else:
+        raise ValueError('is_func must be either True or False')
+
+    # keep only the first and last index of each well
+    z_wells = [[z_well[0][0],z_well[-1][-1]] for z_well in z_wells]
+
+    if return_roots:
+        return integrals,z_wells
+    else:
+        return integrals
